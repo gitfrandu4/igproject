@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 
+const GRAB_RADIUS = 0.5;
+const CAST_POWER_MAX = 5;
+
 export class FishingRod {
   constructor(scene) {
     this.scene = scene;
@@ -60,33 +63,60 @@ export class FishingRod {
     this.rod.add(this.pointer);
   }
 
-  grab(controller = null) {
-    this.isGrabbed = true;
-    if (controller) {
-      this.rod.parent = controller;
-      this.rod.position.set(0, 0, -0.3);
-      this.rod.rotation.set(0, 0, 0);
+  grab(controller = null, controllerPosition = null) {
+    if (controller && controllerPosition) {
+      const rodPosition = new THREE.Vector3();
+      this.rod.getWorldPosition(rodPosition);
+      const distance = controllerPosition.distanceTo(rodPosition);
+
+      if (distance <= GRAB_RADIUS) {
+        this.isGrabbed = true;
+        this.rod.parent = controller;
+        this.rod.position.set(0, 0, -0.3);
+        this.rod.rotation.set(0, 0, 0);
+        console.log(
+          `Rod grabbed by controller. Distance: ${distance.toFixed(2)}`,
+        );
+        return true;
+      }
+      console.log(`Rod grab attempt failed. Distance: ${distance.toFixed(2)}`);
+      return false;
     } else {
-      // Keyboard control
+      this.isGrabbed = true;
       this.rod.position.set(0, 1.5, -1);
       this.rod.rotation.set(0, 0, 0);
+      console.log('Rod grabbed by keyboard');
+      return true;
     }
   }
 
   release() {
+    if (!this.isGrabbed) return;
+
     this.isGrabbed = false;
     if (this.rod.parent !== this.scene) {
       this.scene.attach(this.rod);
+      console.log('Rod released');
     }
   }
 
   startCasting(power = 0) {
+    if (!this.isGrabbed) {
+      console.log('Cannot cast: rod not grabbed');
+      return false;
+    }
+
     this.isCasting = true;
-    this.castPower = power;
+    this.castPower = Math.min(power, CAST_POWER_MAX);
+    console.log(`Starting cast with power: ${this.castPower.toFixed(2)}`);
+    return true;
   }
 
   endCasting() {
+    if (!this.isCasting) return;
+
     this.isCasting = false;
+    console.log(`Ending cast with final power: ${this.castPower.toFixed(2)}`);
     this.castPower = 0;
   }
 
@@ -119,7 +149,7 @@ export class FishingRod {
     }
 
     // Update pointer visibility and scale
-    if (this.pointer) {
+    if (this.pointer && this.scene.water) {
       const rodTip = new THREE.Vector3(0, 0.75, 0);
       rodTip.applyMatrix4(this.rod.matrixWorld);
 
