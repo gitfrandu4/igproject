@@ -89,6 +89,17 @@ class Game {
     this.controllerR.addEventListener('connected', (event) => {
       const hasHand = event.data.hand;
       if (line) line.visible = !hasHand;
+      // Show grab sphere when controller is connected
+      if (this.fishingRod && this.fishingRod.grabSphere) {
+        this.fishingRod.grabSphere.visible = true;
+      }
+    });
+
+    this.controllerR.addEventListener('disconnected', () => {
+      // Hide grab sphere when controller is disconnected
+      if (this.fishingRod && this.fishingRod.grabSphere) {
+        this.fishingRod.grabSphere.visible = false;
+      }
     });
 
     this.controllerR.addEventListener('selectstart', () =>
