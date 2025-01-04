@@ -28,7 +28,7 @@ export class Environment {
           (error) => {
             console.error(`Error loading texture ${path}:`, error);
             reject(error);
-          },
+          }
         );
       });
     };
@@ -46,7 +46,6 @@ export class Environment {
         rockHeight: await loadTexture('textures/rock/height.png'),
         rockAO: await loadTexture('textures/rock/ao.jpg'),
       };
-
       this.setupEnvironment();
     } catch (error) {
       console.error('Error loading textures:', error);
@@ -63,22 +62,21 @@ export class Environment {
   }
 
   createLighting() {
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.4);
+    this.scene.add(hemiLight);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
     this.scene.add(ambientLight);
-
     this.sun = new THREE.DirectionalLight(0xffffff, 1);
-    this.sun.position.set(0, 10, 0);
+    this.sun.position.set(0, 50, 0);
     this.sun.castShadow = true;
-
-    this.sun.shadow.mapSize.width = 2048;
-    this.sun.shadow.mapSize.height = 2048;
+    this.sun.shadow.mapSize.width = 4096;
+    this.sun.shadow.mapSize.height = 4096;
     this.sun.shadow.camera.near = 0.5;
-    this.sun.shadow.camera.far = 50;
-    this.sun.shadow.camera.left = -10;
-    this.sun.shadow.camera.right = 10;
-    this.sun.shadow.camera.top = 10;
-    this.sun.shadow.camera.bottom = -10;
-
+    this.sun.shadow.camera.far = 100;
+    this.sun.shadow.camera.left = -30;
+    this.sun.shadow.camera.right = 30;
+    this.sun.shadow.camera.top = 30;
+    this.sun.shadow.camera.bottom = -30;
     this.scene.add(this.sun);
   }
 
@@ -86,24 +84,21 @@ export class Environment {
     this.sky = new Sky();
     this.sky.scale.setScalar(450000);
     this.scene.add(this.sky);
-
     const skyUniforms = this.sky.material.uniforms;
-    skyUniforms['turbidity'].value = 10;
-    skyUniforms['rayleigh'].value = 2;
-    skyUniforms['mieCoefficient'].value = 0.005;
-    skyUniforms['mieDirectionalG'].value = 0.8;
-
-    const phi = THREE.MathUtils.degToRad(90 - 2);
+    skyUniforms['turbidity'].value = 8;
+    skyUniforms['rayleigh'].value = 3;
+    skyUniforms['mieCoefficient'].value = 0.002;
+    skyUniforms['mieDirectionalG'].value = 0.9;
+    const phi = THREE.MathUtils.degToRad(90 - 5);
     const theta = THREE.MathUtils.degToRad(180);
     const sunPosition = new THREE.Vector3();
     sunPosition.setFromSphericalCoords(1, phi, theta);
-
     skyUniforms['sunPosition'].value.copy(sunPosition);
-    this.sun.position.copy(sunPosition).multiplyScalar(10);
+    this.sun.position.copy(sunPosition).multiplyScalar(50);
   }
 
   createTerrain() {
-    const terrainGeometry = new THREE.RingGeometry(5.5, 20, 64, 8);
+    const terrainGeometry = new THREE.RingGeometry(5.5, 50, 128, 16);
     const terrainMaterial = new THREE.ShaderMaterial({
       vertexShader: terrainShader.vertexShader,
       fragmentShader: terrainShader.fragmentShader,
@@ -115,13 +110,13 @@ export class Environment {
     terrain.rotation.x = -Math.PI / 2;
     terrain.position.y = -0.31;
     terrain.renderOrder = 0;
+    terrain.receiveShadow = true;
     this.scene.add(terrain);
   }
 
   createWater() {
     const waterGeometry = new THREE.CircleGeometry(5, 64);
     const textureLoader = new THREE.TextureLoader();
-
     const loadTexture = (path) => {
       return new Promise((resolve, reject) => {
         textureLoader.load(
@@ -135,11 +130,10 @@ export class Environment {
           (error) => {
             console.error(`Error loading texture ${path}:`, error);
             reject(error);
-          },
+          }
         );
       });
     };
-
     Promise.all([
       loadTexture('textures/water/Water_1_M_Normal.jpg'),
       loadTexture('textures/water/Water_2_M_Normal.jpg'),
@@ -148,16 +142,15 @@ export class Environment {
         this.water = new Water(waterGeometry, {
           textureWidth: 512,
           textureHeight: 512,
-          color: 0x0064ff,
+          color: 0x4f9ded,
           flowDirection: new THREE.Vector2(1, 1),
-          scale: 4,
-          flowSpeed: 0.1,
-          reflectivity: 0.5,
-          opacity: 0.8,
+          scale: 6,
+          flowSpeed: 0.2,
+          reflectivity: 0.6,
+          opacity: 0.85,
           normalMap0,
           normalMap1,
         });
-
         this.water.position.y = -0.3;
         this.water.rotation.x = -Math.PI / 2;
         this.water.renderOrder = 1;
@@ -181,29 +174,25 @@ export class Environment {
       transparent: true,
       alphaTest: 0.5,
     });
-
     for (let i = 0; i < 1000; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const radius = 6 + Math.random() * 13;
+      const radius = 6 + Math.random() * 44;
       const x = Math.cos(angle) * radius;
       const z = Math.sin(angle) * radius;
-
       const grass = new THREE.Mesh(grassGeometry, grassMaterial.clone());
       grass.position.set(x, -0.3, z);
       grass.rotation.x = -Math.PI / 2;
       grass.scale.set(0.8 + Math.random() * 0.4, 0.8 + Math.random() * 0.7, 1);
-
       const textureScale = 0.5 + Math.random() * 1.5;
       grass.material.map.repeat.set(textureScale, textureScale);
       grass.material.normalMap.repeat.set(textureScale, textureScale);
       grass.material.roughnessMap.repeat.set(textureScale, textureScale);
       grass.material.aoMap.repeat.set(textureScale, textureScale);
-
       grass.material.map.rotation = Math.random() * Math.PI;
       grass.material.normalMap.rotation = grass.material.map.rotation;
       grass.material.roughnessMap.rotation = grass.material.map.rotation;
       grass.material.aoMap.rotation = grass.material.map.rotation;
-
+      grass.material.color.setHSL(0.3 + Math.random() * 0.05, 0.5 + Math.random() * 0.2, 0.4 + Math.random() * 0.1);
       grass.castShadow = true;
       grass.receiveShadow = true;
       this.scene.add(grass);
@@ -222,37 +211,33 @@ export class Environment {
       roughness: 1,
       metalness: 1,
     });
-
     for (let i = 0; i < 30; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const radius = 6 + Math.random() * 13;
+      const radius = 6 + Math.random() * 44;
       const x = Math.cos(angle) * radius;
       const z = Math.sin(angle) * radius;
-
       const rock = new THREE.Mesh(rockGeometry, rockMaterial.clone());
       rock.position.set(x, -0.1, z);
       rock.rotation.set(
         Math.random() * Math.PI,
         Math.random() * Math.PI,
-        Math.random() * Math.PI,
+        Math.random() * Math.PI
       );
       rock.scale.set(
         Math.random() * 0.8 + 0.2,
         Math.random() * 0.5 + 0.2,
-        Math.random() * 0.8 + 0.2,
+        Math.random() * 0.8 + 0.2
       );
-
       const textureScale = 0.5 + Math.random() * 1.5;
       rock.material.map.repeat.set(textureScale, textureScale);
       rock.material.normalMap.repeat.set(textureScale, textureScale);
       rock.material.roughnessMap.repeat.set(textureScale, textureScale);
       rock.material.aoMap.repeat.set(textureScale, textureScale);
-
       rock.material.map.rotation = Math.random() * Math.PI;
       rock.material.normalMap.rotation = rock.material.map.rotation;
       rock.material.roughnessMap.rotation = rock.material.map.rotation;
       rock.material.aoMap.rotation = rock.material.map.rotation;
-
+      rock.material.color.setHSL(0 + Math.random() * 0.01, 0 + Math.random() * 0.01, 0.5 + Math.random() * 0.1);
       rock.castShadow = true;
       rock.receiveShadow = true;
       this.scene.add(rock);
@@ -265,10 +250,9 @@ export class Environment {
       this.water.material.uniforms.config.value.y = time * 0.5;
       this.water.material.uniforms.flowDirection.value.set(
         Math.sin(time * 0.1),
-        Math.cos(time * 0.1),
+        Math.cos(time * 0.1)
       );
     }
-
     this.scene.traverse((object) => {
       if (
         object.material &&
@@ -285,7 +269,6 @@ export class Environment {
       this.water.geometry.dispose();
       this.water.material.dispose();
     }
-
     this.scene.traverse((object) => {
       if (object.geometry) {
         object.geometry.dispose();
