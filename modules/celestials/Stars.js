@@ -11,6 +11,7 @@ export class Stars {
     const starsGeometry = new THREE.BufferGeometry();
     const starsVertices = [];
     const starColors = [];
+    const starSizes = [];
 
     for (let i = 0; i < 2000; i++) {
       const r = 350;
@@ -24,7 +25,11 @@ export class Stars {
 
       // Random star color (white to slight blue)
       const intensity = 0.5 + Math.random() * 0.5;
-      starColors.push(intensity, intensity, intensity + Math.random() * 0.2);
+      const blueShift = Math.random() * 0.2;
+      starColors.push(intensity, intensity, intensity + blueShift);
+
+      // Random star size
+      starSizes.push(1.5 + Math.random() * 2.5);
     }
 
     starsGeometry.setAttribute(
@@ -35,12 +40,14 @@ export class Stars {
       'color',
       new THREE.Float32BufferAttribute(starColors, 3),
     );
+    starsGeometry.setAttribute(
+      'size',
+      new THREE.Float32BufferAttribute(starSizes, 1),
+    );
 
     const starsMaterial = new THREE.PointsMaterial({
       size: 2,
       vertexColors: true,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
     });
 
     this.stars = new THREE.Points(starsGeometry, starsMaterial);
@@ -49,10 +56,6 @@ export class Stars {
 
   update(time) {
     if (!this.stars) return;
-
-    // Update stars visibility based on time of day
-    const dayFactor = (Math.sin(time * 0.02) + 1) * 0.5;
-    this.stars.material.opacity = 1 - dayFactor;
   }
 
   dispose() {
