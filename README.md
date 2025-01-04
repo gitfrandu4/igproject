@@ -386,20 +386,29 @@ git clone https://github.com/gitfrandu4/vr-fishing.git
 cd vr-fishing
 ```
 
-2. **Ejecutar un servidor local** (Python o Live Server de VSCode):
+2. **Abrir con Visual Studio Code**:
 
-```bash
-python -m http.server 8080
-```
+   - Abre la carpeta del proyecto en VS Code
+   - Instala la extensión "Live Server" si aún no la tienes
+     - Puedes encontrarla buscando "Live Server" en la pestaña de extensiones
+     - O instalarla directamente desde el [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer)
 
-3. **Abrir en el navegador**:
+3. **Iniciar Live Server**:
 
-- Abre el navegador y navega a `http://localhost:8080`.
+   - Haz clic derecho en el archivo `index.html`
+   - Selecciona "Open with Live Server"
+   - O haz clic en "Go Live" en la barra de estado inferior de VS Code
 
-1. **Entrar en modo VR** (si es compatible):
+4. **Acceder al proyecto**:
 
-- Usa el botón "Enter VR" que aparece en la esquina inferior derecha.
-- Coloca el visor VR y disfruta de la experiencia.
+   - El navegador se abrirá automáticamente en `http://127.0.0.1:5500` (o un puerto similar)
+   - El proyecto se actualizará automáticamente cuando hagas cambios en el código
+
+5. **Entrar en modo VR** (si es compatible):
+   - Usa el botón "Enter VR" que aparece en la esquina inferior derecha
+   - Coloca el visor VR y disfruta de la experiencia
+
+**Nota**: Al ser un proyecto HTML/JavaScript estático, no requiere ninguna instalación adicional ni servidor específico. Live Server proporciona una forma cómoda de servir los archivos y ver los cambios en tiempo real durante el desarrollo.
 
 ---
 
@@ -423,6 +432,7 @@ python -m http.server 8080
    - Referencia para desarrollo de shaders personalizados
 
 4. **Bullet Physics Documentation**
+
    - [https://pybullet.org/wordpress/](https://pybullet.org/wordpress/)
    - Base de Ammo.js para simulación física
 
