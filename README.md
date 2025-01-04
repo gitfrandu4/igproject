@@ -201,6 +201,8 @@ export class FishingRod {
 Gestiona el movimiento y comportamiento de los peces. Utiliza shaders personalizados para efectos submarinos.
 
 ```javascript
+import { fishShaders } from './shaders/fishShaders.js';
+
 export class FishManager {
   constructor(scene) {
     this.scene = scene;
@@ -215,36 +217,8 @@ export class FishManager {
         waterLevel: { value: -0.3 },
         color: { value: new THREE.Color(color) },
       },
-      vertexShader: `
-        varying vec3 vPosition;
-        varying vec3 vNormal;
-        void main() {
-          vPosition = position;
-          vNormal = normal;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        uniform float time;
-        uniform float waterLevel;
-        uniform vec3 color;
-        
-        varying vec3 vPosition;
-        varying vec3 vNormal;
-        
-        void main() {
-          // Efectos submarinos caustics
-          float caustics = sin(vPosition.x * 3.0 + time) * 
-                          sin(vPosition.z * 3.0 + time) * 0.8 + 0.2;
-          
-          // Rim lighting submarino
-          vec3 viewDirection = normalize(cameraPosition - vPosition);
-          float rimLight = pow(1.0 - max(0.0, dot(viewDirection, vNormal)), 2.0);
-          
-          vec3 finalColor = color * (1.0 + caustics + rimLight);
-          gl_FragColor = vec4(finalColor, 0.95);
-        }
-      `,
+      vertexShader: fishShaders.vertexShader,
+      fragmentShader: fishShaders.fragmentShader,
     });
   }
 
@@ -269,7 +243,53 @@ export class FishManager {
     });
   }
 }
+
+export const fishShaders = {
+  vertexShader: `
+    varying vec3 vPosition;
+    varying vec3 vNormal;
+    void main() {
+      vPosition = position;
+      vNormal = normal;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform float time;
+    uniform float waterLevel;
+    uniform vec3 color;
+    
+    varying vec3 vPosition;
+    varying vec3 vNormal;
+    
+    void main() {
+      // Efectos submarinos caustics
+      float caustics = sin(vPosition.x * 3.0 + time) * 
+                      sin(vPosition.z * 3.0 + time) * 0.8 + 0.2;
+      
+      // Rim lighting submarino
+      vec3 viewDirection = normalize(cameraPosition - vPosition);
+      float rimLight = pow(1.0 - max(0.0, dot(viewDirection, vNormal)), 2.0);
+      
+      vec3 finalColor = color * (1.0 + caustics + rimLight);
+      gl_FragColor = vec4(finalColor, 0.95);
+    }
+  `,
+};
 ```
+
+Los shaders han sido modularizados en archivos separados dentro de la carpeta `shaders/` para mejorar la mantenibilidad y reutilización del código. El shader de los peces implementa:
+
+1. **Vertex Shader**: Prepara las variables necesarias para los cálculos de iluminación y efectos.
+
+   - Pasa la posición y normal del vértice al fragment shader
+   - Calcula la posición final del vértice en el espacio de la pantalla
+
+2. **Fragment Shader**: Implementa efectos visuales submarinos:
+   - Caustics: Simula el efecto de la luz atravesando el agua
+   - Rim lighting: Añade un efecto de borde iluminado para mejor visibilidad
+   - Color dinámico: Modula el color base con los efectos para dar realismo
+
 
 Cada módulo está diseñado siguiendo principios de programación orientada a objetos y patrones de diseño comunes en el desarrollo de aplicaciones 3D. La arquitectura modular permite una fácil extensibilidad y mantenimiento del código, mientras que el uso de shaders personalizados y técnicas avanzadas de renderizado asegura un rendimiento óptimo y efectos visuales de alta calidad.
 
