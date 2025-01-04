@@ -221,6 +221,50 @@ export class FishManager {
     return this.fishes;
   }
 
+  checkForNearbyFish(linePosition) {
+    if (!linePosition) return null;
+
+    const catchDistance = 0.5; // Distance threshold for catching fish
+    let nearestFish = null;
+    let nearestDistance = Infinity;
+
+    this.fishes.forEach((fish) => {
+      const distance = fish.position.distanceTo(linePosition);
+
+      // Only consider fish within catch distance and not already caught
+      if (
+        distance < catchDistance &&
+        distance < nearestDistance &&
+        !fish.userData.isCaught
+      ) {
+        nearestDistance = distance;
+        nearestFish = fish;
+      }
+
+      // Debug visualization if debug mode is enabled
+      if (this.debugMode) {
+        console.log(`Fish distance to line: ${distance.toFixed(2)}`);
+      }
+    });
+
+    return nearestFish;
+  }
+
+  catchFish(fish) {
+    if (!fish || fish.userData.isCaught) return;
+
+    fish.userData.isCaught = true;
+    // Optionally add visual feedback when fish is caught
+    fish.traverse((child) => {
+      if (child.isMesh && child.material.uniforms) {
+        child.material.uniforms.color.value.setHex(0xffff00); // Highlight caught fish
+      }
+    });
+
+    // Remove the fish after a short delay
+    setTimeout(() => this.removeFish(fish), 1000);
+  }
+
   removeFish(fish) {
     const index = this.fishes.indexOf(fish);
     if (index > -1) {
