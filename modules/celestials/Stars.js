@@ -8,60 +8,44 @@ export class Stars {
   }
 
   createStars() {
-    const starsGeometry = new THREE.BufferGeometry();
-    const starsVertices = [];
-    const starColors = [];
-    const starSizes = [];
+    // Create a large sphere for the starfield
+    const geometry = new THREE.SphereGeometry(400, 32, 32);
 
-    for (let i = 0; i < 2000; i++) {
-      const r = 350;
-      const theta = 2 * Math.PI * Math.random();
-      const phi = Math.acos(2 * Math.random() - 1);
-      const x = r * Math.sin(phi) * Math.cos(theta);
-      const y = r * Math.sin(phi) * Math.sin(theta);
-      const z = r * Math.cos(phi);
+    // Load the star texture
+    const textureLoader = new THREE.TextureLoader();
+    const starTexture = textureLoader.load('textures/solarsystem/2k_stars.jpg');
 
-      starsVertices.push(x, y, z);
-
-      // Random star color (white to slight blue)
-      const intensity = 0.5 + Math.random() * 0.5;
-      const blueShift = Math.random() * 0.2;
-      starColors.push(intensity, intensity, intensity + blueShift);
-
-      // Random star size
-      starSizes.push(1.5 + Math.random() * 2.5);
-    }
-
-    starsGeometry.setAttribute(
-      'position',
-      new THREE.Float32BufferAttribute(starsVertices, 3),
-    );
-    starsGeometry.setAttribute(
-      'color',
-      new THREE.Float32BufferAttribute(starColors, 3),
-    );
-    starsGeometry.setAttribute(
-      'size',
-      new THREE.Float32BufferAttribute(starSizes, 1),
-    );
-
-    const starsMaterial = new THREE.PointsMaterial({
-      size: 2,
-      vertexColors: true,
+    // Create material with the star texture
+    const material = new THREE.MeshBasicMaterial({
+      map: starTexture,
+      side: THREE.BackSide,
+      transparent: true,
+      opacity: 1.0,
+      blending: THREE.AdditiveBlending,
     });
 
-    this.stars = new THREE.Points(starsGeometry, starsMaterial);
+    this.stars = new THREE.Mesh(geometry, material);
     this.scene.add(this.stars);
   }
 
   update(time) {
     if (!this.stars) return;
+
+    // Update stars visibility
+    const dayFactor = (Math.sin(time * 0.02) + 1) * 0.5;
+    this.stars.material.opacity = Math.max(0, 1 - dayFactor * 1.5);
+
+    // Slow rotation of the star field
+    this.stars.rotation.y = time * 0.01;
   }
 
   dispose() {
     if (this.stars) {
       this.stars.geometry.dispose();
       this.stars.material.dispose();
+      if (this.stars.material.map) {
+        this.stars.material.map.dispose();
+      }
       this.scene.remove(this.stars);
     }
   }
