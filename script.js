@@ -472,7 +472,7 @@ function loadFishes() {
   const fbxLoader = new FBXLoader();
 
   // Load regular fish
-  fbxLoader.load('models/fish.fbx', (fish) => {
+  fbxLoader.load('fish.fbx', (fish) => {
     fish.scale.set(0.01, 0.01, 0.01);
     fish.traverse((child) => {
       if (child.isMesh) {
@@ -542,7 +542,7 @@ function loadFishes() {
   });
 
   // Load red fish with similar slower settings
-  fbxLoader.load('models/fishred.fbx', (redFish) => {
+  fbxLoader.load('fishred.fbx', (redFish) => {
     redFish.scale.set(0.001, 0.001, 0.001);
     redFish.traverse((child) => {
       if (child.isMesh) {
