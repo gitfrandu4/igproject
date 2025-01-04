@@ -9,7 +9,48 @@ export class Environment {
     this.water = null;
     this.sky = null;
     this.sun = null;
-    this.setupEnvironment();
+    this.textures = {};
+    this.loadTextures();
+  }
+
+  async loadTextures() {
+    const textureLoader = new THREE.TextureLoader();
+    const loadTexture = (path) => {
+      return new Promise((resolve, reject) => {
+        textureLoader.load(
+          path,
+          (texture) => {
+            texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(2, 2);
+            resolve(texture);
+          },
+          undefined,
+          (error) => {
+            console.error(`Error loading texture ${path}:`, error);
+            reject(error);
+          },
+        );
+      });
+    };
+
+    try {
+      this.textures = {
+        grassColor: await loadTexture('textures/grass/color.jpg'),
+        grassNormal: await loadTexture('textures/grass/normal.jpg'),
+        grassRoughness: await loadTexture('textures/grass/roughness.jpg'),
+        grassHeight: await loadTexture('textures/grass/height.png'),
+        grassAO: await loadTexture('textures/grass/ao.jpg'),
+        rockColor: await loadTexture('textures/rock/color.jpg'),
+        rockNormal: await loadTexture('textures/rock/normal.jpg'),
+        rockRoughness: await loadTexture('textures/rock/roughness.jpg'),
+        rockHeight: await loadTexture('textures/rock/height.png'),
+        rockAO: await loadTexture('textures/rock/ao.jpg'),
+      };
+
+      this.setupEnvironment();
+    } catch (error) {
+      console.error('Error loading textures:', error);
+    }
   }
 
   setupEnvironment() {
@@ -22,16 +63,13 @@ export class Environment {
   }
 
   createLighting() {
-    // Add ambient light for general illumination
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     this.scene.add(ambientLight);
 
-    // Add directional light to simulate sun
     this.sun = new THREE.DirectionalLight(0xffffff, 1);
     this.sun.position.set(0, 10, 0);
     this.sun.castShadow = true;
 
-    // Improve shadow quality
     this.sun.shadow.mapSize.width = 2048;
     this.sun.shadow.mapSize.height = 2048;
     this.sun.shadow.camera.near = 0.5;
@@ -55,7 +93,6 @@ export class Environment {
     skyUniforms['mieCoefficient'].value = 0.005;
     skyUniforms['mieDirectionalG'].value = 0.8;
 
-    // Set up sun position for nice daytime sky
     const phi = THREE.MathUtils.degToRad(90 - 2);
     const theta = THREE.MathUtils.degToRad(180);
     const sunPosition = new THREE.Vector3();
@@ -66,7 +103,6 @@ export class Environment {
   }
 
   createTerrain() {
-    // Create terrain with shader - make it a ring around the water
     const terrainGeometry = new THREE.RingGeometry(5.5, 20, 64, 8);
     const terrainMaterial = new THREE.ShaderMaterial({
       vertexShader: terrainShader.vertexShader,
@@ -77,23 +113,20 @@ export class Environment {
     });
     const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
     terrain.rotation.x = -Math.PI / 2;
-    terrain.position.y = -0.31; // Slightly lower than water to prevent z-fighting
-    terrain.renderOrder = 0; // Ensure terrain renders first
+    terrain.position.y = -0.31;
+    terrain.renderOrder = 0;
     this.scene.add(terrain);
   }
 
   createWater() {
-    // Create a more organic water shape using circle segments
     const waterGeometry = new THREE.CircleGeometry(5, 64);
     const textureLoader = new THREE.TextureLoader();
 
-    // Add error handling for texture loading
     const loadTexture = (path) => {
       return new Promise((resolve, reject) => {
         textureLoader.load(
           path,
           (texture) => {
-            // Add texture repetition for better detail
             texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
             texture.repeat.set(4, 4);
             resolve(texture);
@@ -107,7 +140,6 @@ export class Environment {
       });
     };
 
-    // Load water textures with error handling
     Promise.all([
       loadTexture('textures/water/Water_1_M_Normal.jpg'),
       loadTexture('textures/water/Water_2_M_Normal.jpg'),
@@ -128,7 +160,7 @@ export class Environment {
 
         this.water.position.y = -0.3;
         this.water.rotation.x = -Math.PI / 2;
-        this.water.renderOrder = 1; // Ensure water renders after terrain
+        this.water.renderOrder = 1;
         this.scene.add(this.water);
       })
       .catch((error) => {
@@ -137,49 +169,67 @@ export class Environment {
   }
 
   createGrass() {
-    const grassGeometry = new THREE.PlaneGeometry(1, 1, 10, 10);
-    const grassMaterial = new THREE.ShaderMaterial({
-      vertexShader: grassShader.vertexShader,
-      fragmentShader: grassShader.fragmentShader,
-      uniforms: {
-        time: { value: 0 },
-      },
+    const grassGeometry = new THREE.PlaneGeometry(1, 1, 32, 32);
+    const grassMaterial = new THREE.MeshStandardMaterial({
+      map: this.textures.grassColor,
+      normalMap: this.textures.grassNormal,
+      roughnessMap: this.textures.grassRoughness,
+      aoMap: this.textures.grassAO,
+      displacementMap: this.textures.grassHeight,
+      displacementScale: 0.1,
       side: THREE.DoubleSide,
       transparent: true,
+      alphaTest: 0.5,
     });
 
-    // Add grass patches around the water
     for (let i = 0; i < 200; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const radius = 6 + Math.random() * 13; // Between 6 and 19 units from center
+      const radius = 6 + Math.random() * 13;
       const x = Math.cos(angle) * radius;
       const z = Math.sin(angle) * radius;
 
       const grass = new THREE.Mesh(grassGeometry, grassMaterial.clone());
-      grass.position.set(x, -0.3, z); // Align with terrain
+      grass.position.set(x, -0.3, z);
       grass.rotation.x = -Math.PI / 2;
       grass.scale.set(0.3 + Math.random() * 0.4, 0.3 + Math.random() * 0.7, 1);
+
+      const textureScale = 0.5 + Math.random() * 1.5;
+      grass.material.map.repeat.set(textureScale, textureScale);
+      grass.material.normalMap.repeat.set(textureScale, textureScale);
+      grass.material.roughnessMap.repeat.set(textureScale, textureScale);
+      grass.material.aoMap.repeat.set(textureScale, textureScale);
+
+      grass.material.map.rotation = Math.random() * Math.PI;
+      grass.material.normalMap.rotation = grass.material.map.rotation;
+      grass.material.roughnessMap.rotation = grass.material.map.rotation;
+      grass.material.aoMap.rotation = grass.material.map.rotation;
+
+      grass.castShadow = true;
+      grass.receiveShadow = true;
       this.scene.add(grass);
     }
   }
 
   createRocks() {
-    const rockGeometry = new THREE.DodecahedronGeometry(0.5, 1);
+    const rockGeometry = new THREE.DodecahedronGeometry(0.5, 2);
     const rockMaterial = new THREE.MeshStandardMaterial({
-      color: 0x808080,
+      map: this.textures.rockColor,
+      normalMap: this.textures.rockNormal,
+      roughnessMap: this.textures.rockRoughness,
+      aoMap: this.textures.rockAO,
+      displacementMap: this.textures.rockHeight,
+      displacementScale: 0.1,
       roughness: 0.9,
       metalness: 0.1,
-      normalScale: new THREE.Vector2(1, 1),
     });
 
-    // Add rocks around the water
     for (let i = 0; i < 20; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const radius = 6 + Math.random() * 13; // Between 6 and 19 units from center
+      const radius = 6 + Math.random() * 13;
       const x = Math.cos(angle) * radius;
       const z = Math.sin(angle) * radius;
 
-      const rock = new THREE.Mesh(rockGeometry, rockMaterial);
+      const rock = new THREE.Mesh(rockGeometry, rockMaterial.clone());
       rock.position.set(x, -0.3, z);
       rock.rotation.set(
         Math.random() * Math.PI,
@@ -191,12 +241,25 @@ export class Environment {
         Math.random() * 0.5 + 0.2,
         Math.random() * 0.8 + 0.2,
       );
+
+      const textureScale = 0.5 + Math.random() * 1.5;
+      rock.material.map.repeat.set(textureScale, textureScale);
+      rock.material.normalMap.repeat.set(textureScale, textureScale);
+      rock.material.roughnessMap.repeat.set(textureScale, textureScale);
+      rock.material.aoMap.repeat.set(textureScale, textureScale);
+
+      rock.material.map.rotation = Math.random() * Math.PI;
+      rock.material.normalMap.rotation = rock.material.map.rotation;
+      rock.material.roughnessMap.rotation = rock.material.map.rotation;
+      rock.material.aoMap.rotation = rock.material.map.rotation;
+
+      rock.castShadow = true;
+      rock.receiveShadow = true;
       this.scene.add(rock);
     }
   }
 
   update(time) {
-    // Update water shader
     if (this.water && this.water.material.uniforms) {
       this.water.material.uniforms.config.value.x = time * 0.5;
       this.water.material.uniforms.config.value.y = time * 0.5;
@@ -206,7 +269,6 @@ export class Environment {
       );
     }
 
-    // Update grass and terrain shaders
     this.scene.traverse((object) => {
       if (
         object.material &&
@@ -219,7 +281,6 @@ export class Environment {
   }
 
   dispose() {
-    // Clean up resources
     if (this.water) {
       this.water.geometry.dispose();
       this.water.material.dispose();
