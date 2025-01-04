@@ -341,8 +341,8 @@ class Game {
     if (this.isRodGrabbed) {
       const landingPosition = this.fishingRod.release();
 
-      // If we have a caught fish, throw it
-      const caughtFish = this.fishManager.getCaughtFish();
+      // If we have a caught fish and a valid landing position, throw it
+      const caughtFish = this.fishManager?.getCaughtFish();
       if (caughtFish && landingPosition) {
         this.fishManager.throwFish(caughtFish, landingPosition);
       }
