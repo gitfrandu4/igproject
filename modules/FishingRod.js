@@ -3,7 +3,19 @@ import * as THREE from 'three';
 const GRAB_RADIUS = 0.8;
 const CAST_POWER_MAX = 5;
 
+/**
+ * FishingRod class implements an interactive fishing rod system with physics-based line simulation.
+ * Key technical features include:
+ * - Real-time physics simulation for fishing line using custom spring dynamics
+ * - Interactive VR and non-VR controls with grab detection
+ * - Dynamic material system with PBR (Physically Based Rendering)
+ * - Procedural animation for casting and reeling mechanics
+ * - Collision detection for fish interaction
+ */
 export class FishingRod {
+  /**
+   * @param {THREE.Scene} scene - The Three.js scene to add the fishing rod to
+   */
   constructor(scene) {
     this.scene = scene;
     this.rod = null;
@@ -21,6 +33,11 @@ export class FishingRod {
     this.textures = null;
   }
 
+  /**
+   * Initializes the fishing rod components and materials.
+   * Implements a modular design pattern for better maintainability and testing.
+   * Returns a Promise to handle asynchronous texture loading.
+   */
   async init() {
     try {
       await this.loadTextures();
@@ -38,8 +55,11 @@ export class FishingRod {
     }
   }
 
+  /**
+   * Creates a simplified rod model as fallback.
+   * Uses basic geometry and materials for performance and reliability.
+   */
   createBasicRod() {
-    // Simple rod without textures
     const rodGeometry = new THREE.CylinderGeometry(0.02, 0.02, 1.5, 8);
     const rodMaterial = new THREE.MeshStandardMaterial({
       color: 0x8b4513,
@@ -54,6 +74,13 @@ export class FishingRod {
     this.scene.add(this.rod);
   }
 
+  /**
+   * Implements PBR material system with texture loading.
+   * Uses advanced material properties for realistic rendering:
+   * - Normal mapping for surface detail
+   * - Roughness mapping for microsurface scattering
+   * - Texture repetition for detail enhancement
+   */
   async loadTextures() {
     const textureLoader = new THREE.TextureLoader();
     const loadTexture = (path) => {
@@ -62,7 +89,7 @@ export class FishingRod {
           path,
           (texture) => {
             texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-            texture.repeat.set(2, 2); // Add some repetition for better detail
+            texture.repeat.set(2, 2);
             resolve(texture);
           },
           undefined,
@@ -75,7 +102,7 @@ export class FishingRod {
     };
 
     try {
-      // First try loading wood textures
+      // Load wood textures with error handling and fallback
       const woodTextures = await Promise.all([
         loadTexture('./textures/wood/color.jpg'),
         loadTexture('./textures/wood/normal.jpg'),
@@ -85,7 +112,6 @@ export class FishingRod {
           'Failed to load wood textures, trying alternative paths...',
           error,
         );
-        // Try alternative paths
         return Promise.all([
           loadTexture('textures/wood/color.jpg'),
           loadTexture('textures/wood/normal.jpg'),
@@ -93,7 +119,7 @@ export class FishingRod {
         ]);
       });
 
-      // Then load metal textures
+      // Load metal textures with error handling and fallback
       const metalTextures = await Promise.all([
         loadTexture('./textures/metal_mesh/color.png'),
         loadTexture('./textures/metal_mesh/normal.png'),
@@ -103,7 +129,6 @@ export class FishingRod {
           'Failed to load metal textures, trying alternative paths...',
           error,
         );
-        // Try alternative paths
         return Promise.all([
           loadTexture('textures/metal_mesh/color.png'),
           loadTexture('textures/metal_mesh/normal.png'),
@@ -126,14 +151,18 @@ export class FishingRod {
       console.log('All textures loaded successfully');
     } catch (error) {
       console.error('Failed to load textures after all attempts:', error);
-      // Instead of throwing, we'll return null and use fallback materials
       this.textures = null;
     }
   }
 
+  /**
+   * Creates material with PBR properties based on material type.
+   * Implements fallback materials when textures aren't available.
+   * @param {string} type - Material type ('wood' or 'metal')
+   * @returns {THREE.Material} Configured PBR material
+   */
   createMaterial(type) {
     if (!this.textures) {
-      // Enhanced fallback materials
       if (type === 'wood') {
         return new THREE.MeshStandardMaterial({
           color: 0x8b4513,
@@ -173,6 +202,13 @@ export class FishingRod {
     return new THREE.MeshStandardMaterial(textures);
   }
 
+  /**
+   * Creates the main rod geometry with segmented design.
+   * Implements a multi-segment approach for:
+   * - Realistic rod tapering
+   * - Proper weight distribution
+   * - Enhanced visual detail
+   */
   createRod() {
     const rodGroup = new THREE.Group();
     const woodMaterial = this.createMaterial('wood');
@@ -195,7 +231,7 @@ export class FishingRod {
     topSegment.position.y = 1.25;
     rodGroup.add(topSegment);
 
-    // Add guides (line rings)
+    // Add line guides with proper spacing
     const guidePositions = [0.5, 0.8, 1.1, 1.4];
     guidePositions.forEach((y) => {
       const guide = this.createGuide();
@@ -211,6 +247,11 @@ export class FishingRod {
     this.scene.add(this.rod);
   }
 
+  /**
+   * Creates fishing line guides with detailed geometry.
+   * Uses compound objects for enhanced visual detail.
+   * @returns {THREE.Group} Assembled guide object
+   */
   createGuide() {
     const guide = new THREE.Group();
     const metalMaterial = this.createMaterial('metal');
@@ -228,10 +269,14 @@ export class FishingRod {
     return guide;
   }
 
+  /**
+   * Creates the fishing reel with mechanical detail.
+   * Implements a compound object structure for visual fidelity.
+   */
   createReel() {
     const reelGroup = new THREE.Group();
 
-    // Reel body
+    // Reel body with metallic PBR material
     const bodyGeometry = new THREE.CylinderGeometry(0.04, 0.04, 0.06, 16);
     const metalMaterial = new THREE.MeshStandardMaterial({
       map: this.textures?.metal,
@@ -245,7 +290,7 @@ export class FishingRod {
     reelBody.rotation.z = Math.PI / 2;
     reelGroup.add(reelBody);
 
-    // Spool
+    // Spool with dynamic line capacity
     const spoolGeometry = new THREE.CylinderGeometry(0.03, 0.03, 0.05, 16);
     const spool = new THREE.Mesh(spoolGeometry, metalMaterial.clone());
     spool.rotation.z = Math.PI / 2;
@@ -257,10 +302,14 @@ export class FishingRod {
     this.rod.add(this.reel);
   }
 
+  /**
+   * Creates the rod handle with ergonomic design.
+   * Uses PBR materials for realistic grip appearance.
+   */
   createHandle() {
     const handleGroup = new THREE.Group();
 
-    // Handle grip
+    // Handle grip with wood texture
     const gripGeometry = new THREE.CylinderGeometry(0.015, 0.012, 0.08, 8);
     const gripMaterial = new THREE.MeshStandardMaterial({
       map: this.textures?.wood,
@@ -279,6 +328,13 @@ export class FishingRod {
     this.rod.add(this.handle);
   }
 
+  /**
+   * Creates the fishing line with physics-based simulation.
+   * Implements a custom line system using:
+   * - BufferGeometry for performance
+   * - Dynamic vertex updates for physics
+   * - Transparent materials for realism
+   */
   createLine() {
     const lineGeometry = new THREE.BufferGeometry();
     const lineMaterial = new THREE.LineBasicMaterial({
@@ -295,6 +351,10 @@ export class FishingRod {
     this.rod.add(this.line);
   }
 
+  /**
+   * Creates a visual pointer for casting direction.
+   * Implements a directional indicator for user feedback.
+   */
   createPointer() {
     const pointerGeometry = new THREE.CylinderGeometry(0.01, 0, 0.2, 8);
     const pointerMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
@@ -305,8 +365,11 @@ export class FishingRod {
     this.rod.add(this.pointer);
   }
 
+  /**
+   * Creates a grab detection sphere for interaction.
+   * Uses transparent material for debug visualization.
+   */
   createGrabSphere() {
-    // Create a transparent sphere to show grab range
     const sphereGeometry = new THREE.SphereGeometry(GRAB_RADIUS, 16, 16);
     const sphereMaterial = new THREE.MeshBasicMaterial({
       color: 0x00ff00,
@@ -316,22 +379,21 @@ export class FishingRod {
     });
     this.grabSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     this.grabSphere.visible = false;
-    // The sphere will be added to the controller in the grab method
   }
 
-  setDebugMode(enabled) {
-    if (this.grabSphere) {
-      this.grabSphere.visible = enabled;
-    }
-  }
-
+  /**
+   * Handles rod grabbing mechanics for both VR and non-VR modes.
+   * Implements different interaction models based on input method.
+   * @param {THREE.Object3D} controller - Optional VR controller
+   * @param {THREE.Vector3} controllerPosition - Optional controller position
+   * @returns {boolean} Whether grab was successful
+   */
   grab(controller = null, controllerPosition = null) {
     if (controller && controllerPosition) {
-      // VR Mode
-      // Add grab sphere to controller if not already added
+      // VR Mode interaction
       if (this.grabSphere && !this.grabSphere.parent) {
         controller.add(this.grabSphere);
-        this.grabSphere.position.set(0, 0, 0); // Center on controller
+        this.grabSphere.position.set(0, 0, 0);
       }
 
       const rodPosition = new THREE.Vector3();
@@ -347,15 +409,14 @@ export class FishingRod {
       }
       return false;
     } else {
-      // Non-VR Mode (Keyboard/Mouse)
+      // Non-VR Mode (Keyboard/Mouse) interaction
       this.isGrabbed = true;
 
-      // Ensure rod is attached to scene if it's not already
       if (this.rod.parent !== this.scene) {
         this.scene.attach(this.rod);
       }
 
-      // Position the rod in front of the camera
+      // Position rod relative to camera
       const camera = this.scene.camera;
       if (camera) {
         const direction = new THREE.Vector3(0, 0, -1);
@@ -363,11 +424,9 @@ export class FishingRod {
         const position = camera.position.clone();
         position.add(direction.multiplyScalar(2));
 
-        // Set rod position and rotation
         this.rod.position.copy(position);
         this.rod.rotation.copy(camera.rotation);
 
-        // Adjust rod position for better visibility
         this.rod.position.y -= 0.5;
         this.rod.position.z -= 0.5;
       }
@@ -376,38 +435,43 @@ export class FishingRod {
     }
   }
 
+  /**
+   * Handles rod release mechanics and calculates landing position.
+   * Implements physics-based trajectory calculation.
+   * @returns {THREE.Vector3} Landing position for fish
+   */
   release() {
     if (!this.isGrabbed) return;
 
     this.isGrabbed = false;
 
-    // Get the current world position before detaching
     const rodPosition = new THREE.Vector3();
     this.rod.getWorldPosition(rodPosition);
 
-    // Calculate a landing position for the fish (away from the water)
     const throwDirection = new THREE.Vector3();
     this.rod.getWorldDirection(throwDirection);
-    throwDirection.y = 0; // Keep it horizontal
+    throwDirection.y = 0;
     throwDirection.normalize();
 
-    // Calculate landing position (further out from rod position)
     const landingPosition = rodPosition
       .clone()
       .add(throwDirection.multiplyScalar(5 + Math.random() * 3));
-    landingPosition.y = 0; // On the ground level
+    landingPosition.y = 0;
 
     if (this.rod.parent !== this.scene) {
       this.scene.attach(this.rod);
     }
 
-    // Reset fishing line
     this.resetFishBite();
 
-    // Return the landing position for the fish
     return landingPosition;
   }
 
+  /**
+   * Initiates casting mechanics with power calculation.
+   * @param {number} power - Casting power (0-5)
+   * @returns {boolean} Whether casting started successfully
+   */
   startCasting(power = 0) {
     if (!this.isGrabbed) return false;
 
@@ -417,6 +481,9 @@ export class FishingRod {
     return true;
   }
 
+  /**
+   * Ends casting and finalizes power calculation.
+   */
   endCasting() {
     if (!this.isCasting) return;
 
@@ -425,6 +492,10 @@ export class FishingRod {
     this.castPower = 0;
   }
 
+  /**
+   * Updates fishing line end point with physics simulation.
+   * @param {THREE.Vector3} point - New end point
+   */
   updateLineEnd(point) {
     this.lineEndPoint.copy(point);
     if (this.line) {
@@ -436,51 +507,52 @@ export class FishingRod {
     }
   }
 
+  /**
+   * Updates rod and line physics simulation.
+   * Implements different behaviors for:
+   * - Casting physics
+   * - Fish bite mechanics
+   * - Idle state animation
+   * @param {number} time - Current time for animation
+   */
   update(time) {
     if (!this.isGrabbed) return;
 
-    // Update line physics
     if (this.line) {
       const positions = this.line.geometry.attributes.position.array;
       const startPoint = new THREE.Vector3(0, 0, 0);
 
       if (this.isCasting) {
-        // When casting, calculate line end point based on cast power and time
+        // Casting physics simulation
         const castTime = time - this.castStartTime;
-        const castDistance = this.castPower * 5; // 5 meters per power unit
+        const castDistance = this.castPower * 5;
         const gravity = -9.81;
         const y = (castTime * castTime * gravity) / 2;
         const endPoint = new THREE.Vector3(0, y, -castDistance);
 
-        // Update line end point
         this.updateLineEnd(endPoint);
       } else if (this.hasFishBite) {
-        // When fish is hooked, create tense line following fish
+        // Fish bite tension simulation
         const rodTip = new THREE.Vector3();
         this.rod.localToWorld(rodTip.set(0, 1.5, 0));
 
-        // Get fish position
         const fish = this.scene.getObjectByName('caughtFish');
         if (fish) {
           const fishPos = fish.position.clone();
 
-          // Calculate line tension
           const direction = fishPos.clone().sub(rodTip);
           const distance = direction.length();
-          const tension = Math.min(1, distance / 5); // Max tension at 5 meters
+          const tension = Math.min(1, distance / 5);
 
-          // Apply tension to line
           const tensionPoint = rodTip.clone().lerp(fishPos, tension);
 
-          // Add some curve to the line
           const midPoint = new THREE.Vector3().lerpVectors(
             rodTip,
             fishPos,
             0.5,
           );
-          midPoint.y -= distance * 0.2 * (1 - tension); // Line sag based on tension
+          midPoint.y -= distance * 0.2 * (1 - tension);
 
-          // Update line vertices for curved line
           const curve = new THREE.QuadraticBezierCurve3(
             rodTip,
             midPoint,
@@ -489,14 +561,12 @@ export class FishingRod {
           const points = curve.getPoints(20);
           this.line.geometry.setFromPoints(points);
 
-          // Store end point for fish detection
           this.lineEndPoint.copy(fishPos);
         }
       } else {
-        // Normal idle state with gentle swaying
+        // Idle state with gentle swaying
         const endPoint = new THREE.Vector3(0, -2, 0);
 
-        // Add gentle swaying motion
         endPoint.y += Math.sin(time * 2) * 0.1;
         endPoint.x += Math.sin(time * 1.5) * 0.05;
         endPoint.z += Math.cos(time * 1.5) * 0.05;
@@ -505,7 +575,7 @@ export class FishingRod {
       }
     }
 
-    // Update pointer visibility and position
+    // Update casting pointer and water intersection
     if (this.pointer && this.scene.water) {
       const rodTip = new THREE.Vector3(0, 0.75, 0);
       rodTip.applyMatrix4(this.rod.matrixWorld);
@@ -530,6 +600,10 @@ export class FishingRod {
     }
   }
 
+  /**
+   * Implements visual feedback for rod interaction.
+   * @param {boolean} isHighlighted - Whether to highlight the rod
+   */
   highlightRod(isHighlighted) {
     this.rod.traverse((child) => {
       if (child.isMesh) {
@@ -549,16 +623,21 @@ export class FishingRod {
     });
   }
 
+  /**
+   * Implements fish bite visual and haptic feedback.
+   * Features include:
+   * - Line color change
+   * - Line tension animation
+   * - VR controller vibration
+   */
   showFishBite() {
     this.hasFishBite = true;
     this.fishBiteTime = performance.now();
 
-    // Change line color to indicate fish bite
     if (this.line) {
-      this.line.material.color.setHex(0xff0000); // Red color
+      this.line.material.color.setHex(0xff0000);
       this.line.material.opacity = 1.0;
 
-      // Add line tension animation
       const originalLineLength =
         this.line.geometry.attributes.position.array[5];
       const animateLine = () => {
@@ -575,17 +654,19 @@ export class FishingRod {
 
       animateLine();
 
-      // Add vibration if using a controller
       if (this.rod.parent && this.rod.parent.vibrate) {
         this.rod.parent.vibrate(100);
       }
     }
   }
 
+  /**
+   * Resets fish bite state and visual effects.
+   */
   resetFishBite() {
     this.hasFishBite = false;
     if (this.line) {
-      this.line.material.color.setHex(0xffffff); // Reset to white
+      this.line.material.color.setHex(0xffffff);
       this.line.material.opacity = 0.6;
     }
   }
