@@ -18,7 +18,7 @@ export class Environment {
 
   createTerrain() {
     // Create terrain with shader - make it a ring around the water
-    const terrainGeometry = new THREE.RingGeometry(5.5, 20, 64, 8); // Inner radius just larger than water
+    const terrainGeometry = new THREE.RingGeometry(5.5, 20, 64, 8);
     const terrainMaterial = new THREE.ShaderMaterial({
       vertexShader: terrainShader.vertexShader,
       fragmentShader: terrainShader.fragmentShader,
@@ -28,12 +28,14 @@ export class Environment {
     });
     const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
     terrain.rotation.x = -Math.PI / 2;
-    terrain.position.y = -0.3; // Align with water level
+    terrain.position.y = -0.31; // Slightly lower than water to prevent z-fighting
+    terrain.renderOrder = 0; // Ensure terrain renders first
     this.scene.add(terrain);
   }
 
   createWater() {
-    const waterGeometry = new THREE.PlaneGeometry(10, 10);
+    // Create a more organic water shape using circle segments
+    const waterGeometry = new THREE.CircleGeometry(5, 64);
     const textureLoader = new THREE.TextureLoader();
 
     // Add error handling for texture loading
@@ -41,7 +43,12 @@ export class Environment {
       return new Promise((resolve, reject) => {
         textureLoader.load(
           path,
-          (texture) => resolve(texture),
+          (texture) => {
+            // Add texture repetition for better detail
+            texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(4, 4);
+            resolve(texture);
+          },
           undefined,
           (error) => {
             console.error(`Error loading texture ${path}:`, error);
@@ -65,13 +72,14 @@ export class Environment {
           scale: 4,
           flowSpeed: 0.1,
           reflectivity: 0.5,
-          opacity: 0.8, // Increased transparency
+          opacity: 0.8,
           normalMap0,
           normalMap1,
         });
 
         this.water.position.y = -0.3;
         this.water.rotation.x = -Math.PI / 2;
+        this.water.renderOrder = 1; // Ensure water renders after terrain
         this.scene.add(this.water);
       })
       .catch((error) => {
