@@ -326,15 +326,39 @@ Cada módulo está diseñado siguiendo principios de programación orientada a o
 
 ### Ammo.js
 
-Integrado para física y simulación de colisiones.
+Se utiliza para la **simulación física y detección de colisiones**. Lo utilizamos para:  
+- Calcular interacciones entre la caña, la línea y los peces (por ejemplo, si se desea una física más realista del sedal o colisiones con objetos).  
+- Manejar el movimiento y colisiones cuando el pez es arrojado fuera del agua.  
+
+En este proyecto, la configuración de Ammo.js se realiza cargando el script `ammo.js` (versión compilada de Bullet Physics para Web), y luego llamando a:
+
+```js
+Ammo().then(() => {
+  // Inicializamos nuestra escena o lógicas físicas aquí
+});
+```
 
 ### three.js
 
-Librería base para renderizado 3D.
+**three.js** es la librería principal para renderizado 3D. En este proyecto se usa para:  
+
+- Crear la escena, cámara y renderizador.  
+- Incorporar la compatibilidad con **WebXR** a través de `renderer.xr.enabled = true;` y la clase `VRButton`.  
+- Añadir geometrías (Cañas, Peces, Entorno) y materiales basados en shaders personalizables.  
+- Manejar luces, sombras y otros efectos de postprocesado (por ejemplo, tono HDR con `ACESFilmicToneMapping`).
 
 ### FBXLoader
 
-Carga modelos `.fbx` de peces animados.
+Permite **cargar modelos** en formato `.fbx` para dar vida a los peces animados:  
+
+- Se importa desde el directorio de addons de three.js, por ejemplo:
+  
+```js
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+```
+
+- Cada modelo se clona y se posiciona en el lago, agregando rotación, escalado y diferentes parámetros de movimiento.  
+- Gracias a `FBXLoader`, es posible tener peces con animaciones complejas (si el `.fbx` incluye rigs y animaciones), o simplemente mallas estáticas para un movimiento procedural.
 
 ---
 
