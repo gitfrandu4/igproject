@@ -20,6 +20,9 @@ class Game {
     this.isRodGrabbed = false;
     this.isCasting = false;
     this.debugMode = true;
+    this.score = 0;
+    this.consecutiveCatches = 0;
+    this.lastCatchTime = 0;
 
     // Create debug info element
     this.debugInfo = document.createElement('div');
@@ -35,6 +38,21 @@ class Game {
     this.debugInfo.style.zIndex = '100';
     this.debugInfo.style.borderRadius = '5px';
     document.body.appendChild(this.debugInfo);
+
+    // Create score display
+    this.scoreDisplay = document.createElement('div');
+    this.scoreDisplay.style.position = 'fixed';
+    this.scoreDisplay.style.top = '10px';
+    this.scoreDisplay.style.right = '10px';
+    this.scoreDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+    this.scoreDisplay.style.color = '#fff';
+    this.scoreDisplay.style.padding = '10px';
+    this.scoreDisplay.style.fontFamily = 'monospace';
+    this.scoreDisplay.style.fontSize = '16px';
+    this.scoreDisplay.style.whiteSpace = 'pre';
+    this.scoreDisplay.style.zIndex = '100';
+    this.scoreDisplay.style.borderRadius = '5px';
+    document.body.appendChild(this.scoreDisplay);
 
     // Keyboard state
     this.keyboardState = {
@@ -262,18 +280,18 @@ class Game {
     document.addEventListener('keydown', (event) => {
       switch (event.code) {
         case 'KeyR':
-          this.resetGame();
+          this.resetRodStatus();
           break;
         case 'KeyQ':
           this.toggleDebugMode();
           break;
         case 'Space':
-          if (this.keyboardState.isGrabbing) {
+          if (this.isRodGrabbed) {
             this.onSqueezeStart();
           }
           break;
         case 'KeyE':
-          if (!this.keyboardState.isGrabbing) {
+          if (!this.isRodGrabbed) {
             this.keyboardState.isGrabbing = true;
             this.onSelectStart();
           }
@@ -302,8 +320,10 @@ class Game {
           this.sceneManager.camera.rotation.y -= rotateSpeed;
           break;
         case 'KeyF':
-          if (this.caughtFish) {
-            this.fishManager.catchFish(this.caughtFish);
+          const caughtFish = this.fishManager?.getCaughtFish();
+          if (caughtFish) {
+            this.addScore(caughtFish);
+            this.fishManager.catchFish(caughtFish);
           }
           break;
       }
@@ -317,6 +337,18 @@ class Game {
         case 'KeyE':
           this.keyboardState.isGrabbing = false;
           this.onSelectEnd();
+          break;
+        case 'KeyW':
+          this.keyboardState.moveForward = false;
+          break;
+        case 'KeyS':
+          this.keyboardState.moveBackward = false;
+          break;
+        case 'KeyA':
+          this.keyboardState.moveLeft = false;
+          break;
+        case 'KeyD':
+          this.keyboardState.moveRight = false;
           break;
       }
     });
@@ -494,30 +526,105 @@ ${'-'.repeat(30)}`;
     this.controllerR?.removeEventListener('squeezeend', this.onSqueezeEnd);
   }
 
-  resetGame() {
-    console.log('Resetting game...');
-
-    // Reset fish manager
-    if (this.fishManager) {
-      // Remove all fish from the scene
-      const allFish = this.fishManager.getFishes();
-      allFish.forEach((fish) => {
-        this.fishManager.removeFish(fish);
-      });
-
-      // Reinitialize fish
-      this.fishManager.init();
-    }
-
-    // Reset fishing rod
+  resetRodStatus() {
     if (this.fishingRod) {
-      this.fishingRod.release();
-      this.fishingRod.resetFishBite();
       this.isRodGrabbed = false;
       this.isCasting = false;
+      this.fishingRod.isGrabbed = false;
+      this.fishingRod.isCasting = false;
+      this.fishingRod.resetFishBite();
+
+      // Reset rod position
+      this.fishingRod.rod.position.set(0, 1, -0.5);
+      this.fishingRod.rod.rotation.set(Math.PI / 4, 0, 0);
+
+      // Ensure rod is attached to scene
+      if (this.fishingRod.rod.parent !== this.scene) {
+        this.scene.attach(this.fishingRod.rod);
+      }
+    }
+  }
+
+  addScore(fish) {
+    const now = performance.now();
+    const timeSinceLastCatch = now - this.lastCatchTime;
+
+    // Base points based on fish type
+    let points = fish.userData.isRed ? 100 : 50;
+
+    // Bonus for consecutive catches within 5 seconds
+    if (timeSinceLastCatch < 5000) {
+      this.consecutiveCatches++;
+      points *= 1 + this.consecutiveCatches * 0.2; // 20% bonus per consecutive catch
+    } else {
+      this.consecutiveCatches = 0;
     }
 
-    console.log('Game reset complete');
+    // Bonus for fish depth
+    const depthBonus = Math.abs(fish.position.y + 0.3) * 50; // More points for deeper fish
+    points += depthBonus;
+
+    // Round the final score
+    points = Math.round(points);
+
+    this.score += points;
+    this.lastCatchTime = now;
+
+    // Show score popup
+    this.showScorePopup(points, fish.position);
+
+    // Update score display
+    this.updateScoreDisplay();
+  }
+
+  showScorePopup(points, position) {
+    const popup = document.createElement('div');
+    popup.style.position = 'fixed';
+    popup.style.color = '#ffff00';
+    popup.style.fontSize = '24px';
+    popup.style.fontFamily = 'monospace';
+    popup.style.fontWeight = 'bold';
+    popup.style.textShadow = '2px 2px 2px rgba(0,0,0,0.5)';
+    popup.style.pointerEvents = 'none';
+
+    // Convert 3D position to screen coordinates
+    const vector = position.clone();
+    vector.project(this.sceneManager.camera);
+
+    const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+    const y = (-vector.y * 0.5 + 0.5) * window.innerHeight;
+
+    popup.style.left = x + 'px';
+    popup.style.top = y + 'px';
+    popup.textContent = `+${points}`;
+
+    document.body.appendChild(popup);
+
+    // Animate popup
+    let opacity = 1;
+    let yOffset = 0;
+    const animate = () => {
+      opacity -= 0.02;
+      yOffset -= 1;
+      popup.style.opacity = opacity;
+      popup.style.transform = `translateY(${yOffset}px)`;
+
+      if (opacity > 0) {
+        requestAnimationFrame(animate);
+      } else {
+        document.body.removeChild(popup);
+      }
+    };
+
+    animate();
+  }
+
+  updateScoreDisplay() {
+    this.scoreDisplay.innerHTML = `
+🎯 PUNTUACIÓN ${'-'.repeat(10)}
+Total: ${this.score} puntos
+Racha: x${this.consecutiveCatches + 1}
+${'-'.repeat(25)}`;
   }
 
   toggleDebugMode() {
