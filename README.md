@@ -18,6 +18,13 @@
     - [Efectos Visuales Avanzados](#efectos-visuales-avanzados)
     - [Integración VR](#integración-vr)
     - [Gestión de Recursos](#gestión-de-recursos)
+    - [Implementación VR/XR](#implementación-vrxr)
+      - [1. Inicialización del Sistema VR](#1-inicialización-del-sistema-vr)
+      - [2. Sistema de Controladores VR](#2-sistema-de-controladores-vr)
+      - [3. Sistema de Interacción con Controladores](#3-sistema-de-interacción-con-controladores)
+      - [4. Sistema de Movimiento en VR](#4-sistema-de-movimiento-en-vr)
+      - [5. Optimizaciones Específicas para VR](#5-optimizaciones-específicas-para-vr)
+      - [6. Retroalimentación Háptica](#6-retroalimentación-háptica)
   - [Estructura de Archivos y Directorios](#estructura-de-archivos-y-directorios)
   - [Tecnologías Utilizadas](#tecnologías-utilizadas)
   - [Principales Módulos](#principales-módulos)
@@ -345,6 +352,242 @@ dispose() {
     this.scene.remove(fish);
   });
   this.fishes = [];
+}
+```
+
+### Implementación VR/XR
+
+La implementación de la Realidad Virtual utiliza la API WebXR, que proporciona acceso a dispositivos VR a través del navegador. El sistema se estructura en varias capas:
+
+#### 1. Inicialización del Sistema VR
+
+```javascript
+// Ejemplo de game.js - Inicialización VR
+class Game {
+  constructor() {
+    this.sceneManager = new SceneManager();
+    this.renderer = this.sceneManager.renderer;
+    this.renderer.xr.enabled = true; // Habilitamos soporte XR
+
+    // Configuración específica para VR
+    this.renderer.xr.setReferenceSpaceType('local-floor');
+    this.renderer.xr.setSession(session);
+
+    // Creamos el botón VR con opciones personalizadas
+    const vrButton = VRButton.createButton(this.renderer, {
+      requiredFeatures: ['local-floor', 'bounded-floor'],
+      optionalFeatures: ['hand-tracking'],
+    });
+  }
+}
+```
+
+#### 2. Sistema de Controladores VR
+
+Los controladores VR se implementan con un sistema completo de seguimiento y eventos:
+
+```javascript
+// Ejemplo de game.js - Sistema de controladores
+setupVRControllers() {
+  // Configuración de fábrica de modelos de controladores
+  const controllerModelFactory = new XRControllerModelFactory();
+
+  // Controlador derecho
+  this.controllerR = this.renderer.xr.getController(0);
+  const controllerGripR = this.renderer.xr.getControllerGrip(0);
+
+  // Controlador izquierdo
+  this.controllerL = this.renderer.xr.getController(1);
+  const controllerGripL = this.renderer.xr.getControllerGrip(1);
+
+  // Sistema de visualización de rayos para apuntar
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, -1], 3));
+  const material = new THREE.LineBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.5
+  });
+
+  // Añadimos líneas de ayuda visual a los controladores
+  this.controllerR.add(new THREE.Line(geometry, material));
+  this.controllerL.add(new THREE.Line(geometry, material));
+
+  // Cargamos los modelos 3D de los controladores
+  controllerGripR.add(controllerModelFactory.createControllerModel(controllerGripR));
+  controllerGripL.add(controllerModelFactory.createControllerModel(controllerGripL));
+}
+```
+
+#### 3. Sistema de Interacción con Controladores
+
+La interacción se maneja a través de un sistema de eventos completo:
+
+```javascript
+// Ejemplo de game.js - Sistema de eventos de controladores
+setupControllerEvents() {
+  // Eventos del controlador derecho (caña de pescar)
+  this.controllerR.addEventListener('selectstart', () => {
+    // Botón trigger - Agarrar caña
+    const controllerPos = new THREE.Vector3();
+    this.controllerR.getWorldPosition(controllerPos);
+    if (this.fishingRod.grab(this.controllerR, controllerPos)) {
+      this.isRodGrabbed = true;
+      // Retroalimentación háptica
+      if (this.controllerR.gamepad) {
+        this.controllerR.gamepad.vibrationActuator?.playEffect('dual-rumble', {
+          duration: 100,
+          strongMagnitude: 0.5,
+          weakMagnitude: 0.5
+        });
+      }
+    }
+  });
+
+  this.controllerR.addEventListener('squeezestart', () => {
+    // Botón grip - Lanzar línea
+    if (this.isRodGrabbed && !this.isCasting) {
+      this.fishingRod.startCasting();
+      this.isCasting = true;
+    }
+  });
+
+  // Eventos del controlador izquierdo (movimiento)
+  this.controllerL.addEventListener('thumbstickmove', (event) => {
+    // Joystick - Movimiento del jugador
+    const { x, y } = event.axes;
+    if (Math.abs(x) > 0.1 || Math.abs(y) > 0.1) {
+      this.movePlayer(x, y);
+    }
+  });
+}
+```
+
+#### 4. Sistema de Movimiento en VR
+
+El movimiento en VR se implementa con varias técnicas para reducir la cinetosis:
+
+```javascript
+// Ejemplo de game.js - Sistema de movimiento VR
+class Game {
+  movePlayer(x, y) {
+    // Vector de dirección basado en la orientación de la cámara
+    const camera = this.sceneManager.camera;
+    const direction = new THREE.Vector3();
+    camera.getWorldDirection(direction);
+    direction.y = 0;
+    direction.normalize();
+
+    // Vector derecho de la cámara para movimiento lateral
+    const right = new THREE.Vector3();
+    right.crossVectors(camera.up, direction).normalize();
+
+    // Calculamos el movimiento final
+    const moveSpeed = 0.1;
+    const movement = new THREE.Vector3();
+    movement.addScaledVector(direction, -y * moveSpeed); // Adelante/Atrás
+    movement.addScaledVector(right, x * moveSpeed); // Izquierda/Derecha
+
+    // Aplicamos el movimiento con suavizado
+    this.playerPosition.add(movement);
+
+    // Verificamos colisiones con el entorno
+    this.checkEnvironmentCollisions();
+  }
+
+  checkEnvironmentCollisions() {
+    // Raycast para detectar colisiones con el terreno y objetos
+    const raycaster = new THREE.Raycaster(
+      this.playerPosition,
+      new THREE.Vector3(0, -1, 0),
+    );
+    const intersects = raycaster.intersectObjects(this.collisionObjects);
+
+    if (intersects.length > 0) {
+      // Ajustamos la altura del jugador al terreno
+      const groundY = intersects[0].point.y;
+      this.playerPosition.y = groundY + this.playerHeight;
+    }
+  }
+}
+```
+
+#### 5. Optimizaciones Específicas para VR
+
+```javascript
+// Ejemplo de SceneManager.js - Optimizaciones VR
+class SceneManager {
+  setupVROptimizations() {
+    // Ajuste dinámico de resolución basado en el rendimiento
+    this.renderer.xr.setFramebufferScaleFactor(0.8);
+
+    // Sistema de LOD para VR
+    this.setupLODSystem();
+
+    // Optimización de sombras para VR
+    this.setupVRShadows();
+  }
+
+  setupLODSystem() {
+    const lod = new THREE.LOD();
+
+    // Nivel de detalle alto (cerca)
+    const highDetailGeometry = new THREE.SphereGeometry(1, 32, 32);
+    const highDetailMesh = new THREE.Mesh(highDetailGeometry, this.material);
+    lod.addLevel(highDetailMesh, 0);
+
+    // Nivel de detalle medio
+    const mediumDetailGeometry = new THREE.SphereGeometry(1, 16, 16);
+    const mediumDetailMesh = new THREE.Mesh(
+      mediumDetailGeometry,
+      this.material,
+    );
+    lod.addLevel(mediumDetailMesh, 5);
+
+    // Nivel de detalle bajo (lejos)
+    const lowDetailGeometry = new THREE.SphereGeometry(1, 8, 8);
+    const lowDetailMesh = new THREE.Mesh(lowDetailGeometry, this.material);
+    lod.addLevel(lowDetailMesh, 10);
+  }
+
+  setupVRShadows() {
+    // Configuración optimizada de sombras para VR
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.autoUpdate = false;
+    this.renderer.shadowMap.needsUpdate = true;
+  }
+}
+```
+
+#### 6. Retroalimentación Háptica
+
+```javascript
+// Ejemplo de FishingRod.js - Sistema háptico
+class FishingRod {
+  provideFishBiteHapticFeedback() {
+    if (this.controller && this.controller.gamepad) {
+      // Patrón de vibración para cuando un pez muerde el anzuelo
+      const hapticEffect = {
+        duration: 300,
+        strongMagnitude: 0.7,
+        weakMagnitude: 0.3,
+      };
+
+      // Secuencia de pulsos para simular tirones del pez
+      const pulseCount = 3;
+      let delay = 0;
+
+      for (let i = 0; i < pulseCount; i++) {
+        setTimeout(() => {
+          this.controller.gamepad.vibrationActuator?.playEffect(
+            'dual-rumble',
+            hapticEffect,
+          );
+        }, delay);
+        delay += 400;
+      }
+    }
+  }
 }
 ```
 
