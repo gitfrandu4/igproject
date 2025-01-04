@@ -1,19 +1,68 @@
 import * as THREE from 'three';
 import { Water } from 'three/addons/objects/Water2.js';
+import { Sky } from 'three/addons/objects/Sky.js';
 import { grassShader, terrainShader } from './shaders.js';
 
 export class Environment {
   constructor(scene) {
     this.scene = scene;
     this.water = null;
+    this.sky = null;
+    this.sun = null;
     this.setupEnvironment();
   }
 
   setupEnvironment() {
+    this.createLighting();
+    this.createSky();
     this.createTerrain();
     this.createWater();
     this.createGrass();
     this.createRocks();
+  }
+
+  createLighting() {
+    // Add ambient light for general illumination
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    this.scene.add(ambientLight);
+
+    // Add directional light to simulate sun
+    this.sun = new THREE.DirectionalLight(0xffffff, 1);
+    this.sun.position.set(0, 10, 0);
+    this.sun.castShadow = true;
+
+    // Improve shadow quality
+    this.sun.shadow.mapSize.width = 2048;
+    this.sun.shadow.mapSize.height = 2048;
+    this.sun.shadow.camera.near = 0.5;
+    this.sun.shadow.camera.far = 50;
+    this.sun.shadow.camera.left = -10;
+    this.sun.shadow.camera.right = 10;
+    this.sun.shadow.camera.top = 10;
+    this.sun.shadow.camera.bottom = -10;
+
+    this.scene.add(this.sun);
+  }
+
+  createSky() {
+    this.sky = new Sky();
+    this.sky.scale.setScalar(450000);
+    this.scene.add(this.sky);
+
+    const skyUniforms = this.sky.material.uniforms;
+    skyUniforms['turbidity'].value = 10;
+    skyUniforms['rayleigh'].value = 2;
+    skyUniforms['mieCoefficient'].value = 0.005;
+    skyUniforms['mieDirectionalG'].value = 0.8;
+
+    // Set up sun position for nice daytime sky
+    const phi = THREE.MathUtils.degToRad(90 - 2);
+    const theta = THREE.MathUtils.degToRad(180);
+    const sunPosition = new THREE.Vector3();
+    sunPosition.setFromSphericalCoords(1, phi, theta);
+
+    skyUniforms['sunPosition'].value.copy(sunPosition);
+    this.sun.position.copy(sunPosition).multiplyScalar(10);
   }
 
   createTerrain() {
