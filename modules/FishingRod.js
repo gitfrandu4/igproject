@@ -409,14 +409,11 @@ export class FishingRod {
   }
 
   startCasting(power = 0) {
-    if (!this.isGrabbed) {
-      console.log('Cannot cast: rod not grabbed');
-      return false;
-    }
+    if (!this.isGrabbed) return false;
 
     this.isCasting = true;
     this.castPower = Math.min(power, CAST_POWER_MAX);
-    console.log(`Starting cast with power: ${this.castPower.toFixed(2)}`);
+    this.castStartTime = performance.now() * 0.001;
     return true;
   }
 
@@ -443,27 +440,72 @@ export class FishingRod {
     if (!this.isGrabbed) return;
 
     // Update line physics
-    if (this.line && !this.isCasting) {
+    if (this.line) {
       const positions = this.line.geometry.attributes.position.array;
       const startPoint = new THREE.Vector3(0, 0, 0);
-      const endPoint = new THREE.Vector3(0, -2, 0);
 
-      // Add gentle swaying motion
-      endPoint.y += Math.sin(time * 2) * 0.1;
-      endPoint.x += Math.sin(time * 1.5) * 0.05;
-      endPoint.z += Math.cos(time * 1.5) * 0.05;
+      if (this.isCasting) {
+        // When casting, calculate line end point based on cast power and time
+        const castTime = time - this.castStartTime;
+        const castDistance = this.castPower * 5; // 5 meters per power unit
+        const gravity = -9.81;
+        const y = (castTime * castTime * gravity) / 2;
+        const endPoint = new THREE.Vector3(0, y, -castDistance);
 
-      // Add stronger movement if there's a fish bite
-      if (this.hasFishBite) {
-        const biteIntensity = Math.sin(time * 10) * 0.2;
-        endPoint.y += biteIntensity;
-        endPoint.x += biteIntensity * 0.5;
+        // Update line end point
+        this.updateLineEnd(endPoint);
+      } else if (this.hasFishBite) {
+        // When fish is hooked, create tense line following fish
+        const rodTip = new THREE.Vector3();
+        this.rod.localToWorld(rodTip.set(0, 1.5, 0));
+
+        // Get fish position
+        const fish = this.scene.getObjectByName('caughtFish');
+        if (fish) {
+          const fishPos = fish.position.clone();
+
+          // Calculate line tension
+          const direction = fishPos.clone().sub(rodTip);
+          const distance = direction.length();
+          const tension = Math.min(1, distance / 5); // Max tension at 5 meters
+
+          // Apply tension to line
+          const tensionPoint = rodTip.clone().lerp(fishPos, tension);
+
+          // Add some curve to the line
+          const midPoint = new THREE.Vector3().lerpVectors(
+            rodTip,
+            fishPos,
+            0.5,
+          );
+          midPoint.y -= distance * 0.2 * (1 - tension); // Line sag based on tension
+
+          // Update line vertices for curved line
+          const curve = new THREE.QuadraticBezierCurve3(
+            rodTip,
+            midPoint,
+            fishPos,
+          );
+          const points = curve.getPoints(20);
+          this.line.geometry.setFromPoints(points);
+
+          // Store end point for fish detection
+          this.lineEndPoint.copy(fishPos);
+        }
+      } else {
+        // Normal idle state with gentle swaying
+        const endPoint = new THREE.Vector3(0, -2, 0);
+
+        // Add gentle swaying motion
+        endPoint.y += Math.sin(time * 2) * 0.1;
+        endPoint.x += Math.sin(time * 1.5) * 0.05;
+        endPoint.z += Math.cos(time * 1.5) * 0.05;
+
+        this.updateLineEnd(endPoint);
       }
-
-      this.line.geometry.setFromPoints([startPoint, endPoint]);
     }
 
-    // Update pointer visibility and scale
+    // Update pointer visibility and position
     if (this.pointer && this.scene.water) {
       const rodTip = new THREE.Vector3(0, 0.75, 0);
       rodTip.applyMatrix4(this.rod.matrixWorld);
@@ -533,17 +575,10 @@ export class FishingRod {
 
       animateLine();
 
-      // Reset line after 2 seconds if fish not caught
-      setTimeout(() => {
-        if (this.hasFishBite) {
-          this.resetFishBite();
-        }
-      }, 2000);
-    }
-
-    // Add vibration if using a controller
-    if (this.rod.parent && this.rod.parent.vibrate) {
-      this.rod.parent.vibrate(100);
+      // Add vibration if using a controller
+      if (this.rod.parent && this.rod.parent.vibrate) {
+        this.rod.parent.vibrate(100);
+      }
     }
   }
 

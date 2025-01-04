@@ -30,7 +30,7 @@ export class Environment {
           undefined,
           (error) => {
             reject(error);
-          }
+          },
         );
       });
     };
@@ -93,7 +93,7 @@ export class Environment {
     skyUniforms.mieCoefficient.value = 0.008;
     skyUniforms.mieDirectionalG.value = 0.8;
 
-    this.updateSunPosition(0); 
+    this.updateSunPosition(0);
   }
 
   createTerrain() {
@@ -102,13 +102,21 @@ export class Environment {
       vertexShader: terrainShader.vertexShader,
       fragmentShader: terrainShader.fragmentShader,
       uniforms: {
+        grassTexture: { value: this.textures.grassColor },
+        grassNormal: { value: this.textures.grassNormal },
         time: { value: 0 },
       },
     });
+
+    // Enable texture repetition for the grass texture
+    this.textures.grassColor.wrapS = this.textures.grassColor.wrapT =
+      THREE.RepeatWrapping;
+    this.textures.grassNormal.wrapS = this.textures.grassNormal.wrapT =
+      THREE.RepeatWrapping;
+
     const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
     terrain.rotation.x = -Math.PI / 2;
     terrain.position.y = -0.31;
-    terrain.renderOrder = 0;
     terrain.receiveShadow = true;
     this.scene.add(terrain);
   }
@@ -128,7 +136,7 @@ export class Environment {
           undefined,
           (error) => {
             reject(error);
-          }
+          },
         );
       });
     };
@@ -140,12 +148,12 @@ export class Environment {
         this.water = new Water(waterGeometry, {
           textureWidth: 512,
           textureHeight: 512,
-          color: 0x1e607c,
+          color: new THREE.Color(0x55ccff), // Lighter blue color
           flowDirection: new THREE.Vector2(1, 1),
           scale: 7,
           flowSpeed: 0.25,
-          reflectivity: 0.65,
-          opacity: 0.88,
+          reflectivity: 0.35, // Reduced reflectivity
+          opacity: 0.65, // More transparent
           normalMap0,
           normalMap1,
         });
@@ -216,7 +224,7 @@ export class Environment {
       grass.material.color.setHSL(
         0.3 + Math.random() * 0.05,
         0.5 + Math.random() * 0.2,
-        0.4 + Math.random() * 0.1
+        0.4 + Math.random() * 0.1,
       );
       grass.castShadow = true;
       grass.receiveShadow = true;
@@ -246,12 +254,12 @@ export class Environment {
       rock.rotation.set(
         Math.random() * Math.PI,
         Math.random() * Math.PI,
-        Math.random() * Math.PI
+        Math.random() * Math.PI,
       );
       rock.scale.set(
         Math.random() * 0.8 + 0.2,
         Math.random() * 0.5 + 0.2,
-        Math.random() * 0.8 + 0.2
+        Math.random() * 0.8 + 0.2,
       );
 
       const textureScale = 0.5 + Math.random() * 1.5;
@@ -268,7 +276,7 @@ export class Environment {
       rock.material.color.setHSL(
         0 + Math.random() * 0.01,
         0 + Math.random() * 0.01,
-        0.5 + Math.random() * 0.1
+        0.5 + Math.random() * 0.1,
       );
       rock.castShadow = true;
       rock.receiveShadow = true;
@@ -301,7 +309,7 @@ export class Environment {
       this.water.material.uniforms.config.value.y = time * 0.5;
       this.water.material.uniforms.flowDirection.value.set(
         Math.sin(time * 0.1),
-        Math.cos(time * 0.1)
+        Math.cos(time * 0.1),
       );
     }
     this.scene.traverse((object) => {
