@@ -297,52 +297,59 @@ export class FishManager {
     fish.userData.struggleIntensity *= 0.995;
   }
 
-  throwFish(fish, landingPosition) {
-    if (!fish || !fish.userData.isCaught) return;
+  throwFish(fish, targetPosition) {
+    if (!fish) return;
 
-    fish.userData.isBeingReeled = false;
-    fish.userData.isOnGround = true;
+    // Remove fish from caught state
+    this.caughtFish = null;
 
-    // Calculate arc trajectory with some randomness
-    const startPos = fish.position.clone();
-    const height = 3 + Math.random() * 4; // Variable height
-    const duration = 800 + Math.random() * 400; // Variable duration
-    const rotations = 2 + Math.random() * 3; // Number of rotations during throw
+    // Calculate throw trajectory
+    const startPosition = fish.position.clone();
+    const endPosition = targetPosition.clone();
 
+    // Add some height to the arc
+    const midPoint = startPosition.clone().lerp(endPosition, 0.5);
+    midPoint.y += 3; // Height of the arc
+
+    // Create animation points
+    const curve = new THREE.QuadraticBezierCurve3(
+      startPosition,
+      midPoint,
+      endPosition,
+    );
+
+    // Animation parameters
+    const duration = 1000; // 1 second
     const startTime = performance.now();
-    const startRotation = fish.rotation.clone();
 
-    const animateThrow = () => {
+    // Animate the throw
+    const animate = () => {
       const currentTime = performance.now();
       const elapsed = currentTime - startTime;
       const progress = Math.min(elapsed / duration, 1);
 
       if (progress < 1) {
-        // Parabolic arc with some wobble
-        const x = startPos.x + (landingPosition.x - startPos.x) * progress;
-        const z = startPos.z + (landingPosition.z - startPos.z) * progress;
-        const y =
-          startPos.y +
-          height * Math.sin(progress * Math.PI) +
-          (landingPosition.y - startPos.y) * progress +
-          Math.sin(progress * Math.PI * 4) * 0.2; // Add wobble
+        // Get current position along the curve
+        const point = curve.getPoint(progress);
+        fish.position.copy(point);
 
-        fish.position.set(x, y, z);
+        // Add some rotation during flight
+        fish.rotation.x += 0.1;
+        fish.rotation.z += 0.15;
 
-        // Rotate fish during throw
-        fish.rotation.x = startRotation.x + Math.PI * 2 * rotations * progress;
-        fish.rotation.z =
-          startRotation.z + Math.sin(progress * Math.PI * 6) * 0.5;
-
-        requestAnimationFrame(animateThrow);
+        requestAnimationFrame(animate);
       } else {
-        // Fish has landed
-        fish.position.copy(landingPosition);
-        this.onFishLanded(fish);
+        // Animation complete
+        fish.position.copy(endPosition);
+        fish.rotation.set(0, Math.random() * Math.PI * 2, 0); // Random final rotation
+
+        // Re-enable fish AI behavior
+        fish.isActive = true;
       }
     };
 
-    animateThrow();
+    // Start animation
+    animate();
   }
 
   onFishLanded(fish) {
