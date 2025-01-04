@@ -43,8 +43,8 @@ class Game {
 
       // Initialize fishing rod
       this.fishingRod = new FishingRod(this.sceneManager.scene);
-      this.fishingRod.init();
-      this.objects.push(this.fishingRod.rod);
+      const rod = await this.fishingRod.init();
+      this.objects.push(rod);
 
       // Initialize fish manager
       this.fishManager = new FishManager(this.sceneManager.scene);
@@ -257,21 +257,37 @@ class Game {
     // Update debug info
     if (this.debugMode && this.debugInfo) {
       const caughtFish = this.fishManager?.getCaughtFish();
+      const fps = Math.round(1 / (time - (this.lastTime || time)));
+
       this.debugInfo.innerHTML = `
-        FPS: ${Math.round(1 / (time - (this.lastTime || time)))}
-        Casting: ${this.fishingRod?.isCasting ? 'YES' : 'NO'}
-        Rod Grabbed: ${this.isRodGrabbed ? 'YES' : 'NO'}
-        Fish Count: ${this.fishManager?.getFishes().length || 0}
-        Caught Fish: ${caughtFish ? 'YES' : 'NO'}
-        ${
-          caughtFish
-            ? `Fish Position: ${caughtFish.position
-                .toArray()
-                .map((v) => v.toFixed(2))
-                .join(', ')}`
-            : ''
-        }
-      `;
+🎮 DEBUG INFO ${'-'.repeat(20)}
+FPS: ${fps} ${fps < 30 ? '⚠️' : '✅'}
+ROD STATUS:
+  Grabbed: ${this.isRodGrabbed ? '✅ YES' : '❌ NO'}
+  Casting: ${this.fishingRod?.isCasting ? '🎣 YES' : '❌ NO'}
+  Has Bite: ${this.fishingRod?.hasFishBite ? '🐟 YES' : '❌ NO'}
+
+FISH STATUS:
+  Total Fish: ${this.fishManager?.getFishes().length || 0} 🐠
+  Fish Caught: ${caughtFish ? '🎯 YES' : '❌ NO'}
+${
+  caughtFish
+    ? `  Position: (${caughtFish.position
+        .toArray()
+        .map((v) => v.toFixed(2))
+        .join(', ')}) 📍`
+    : ''
+}
+
+CONTROLS:
+  [E] Grab/Release Rod
+  [SPACE] Cast Line
+  [WASD] Move Rod
+  [QZ] Up/Down
+  [R] Reset Game
+  [D] Toggle Debug
+${'-'.repeat(30)}`;
+
       this.lastTime = time;
     }
 
@@ -361,26 +377,32 @@ class Game {
       if (!this.debugInfo) {
         this.debugInfo = document.createElement('div');
         this.debugInfo.style.position = 'fixed';
-        this.debugInfo.style.top = '10px';
-        this.debugInfo.style.left = '10px';
-        this.debugInfo.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-        this.debugInfo.style.color = 'white';
-        this.debugInfo.style.padding = '10px';
+        this.debugInfo.style.top = '20px';
+        this.debugInfo.style.left = '20px';
+        this.debugInfo.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+        this.debugInfo.style.color = '#00ff00';
+        this.debugInfo.style.padding = '15px';
         this.debugInfo.style.fontFamily = 'monospace';
-        this.debugInfo.style.fontSize = '14px';
+        this.debugInfo.style.fontSize = '16px';
         this.debugInfo.style.zIndex = '1000';
+        this.debugInfo.style.borderRadius = '5px';
+        this.debugInfo.style.border = '1px solid #00ff00';
+        this.debugInfo.style.boxShadow = '0 0 10px rgba(0, 255, 0, 0.3)';
+        this.debugInfo.style.whiteSpace = 'pre';
         document.body.appendChild(this.debugInfo);
       }
       this.debugInfo.style.display = 'block';
 
       // Enable debug mode in managers
       this.fishManager?.setDebugMode(true);
+      this.fishingRod?.setDebugMode(true);
     } else {
       // Hide debug info
       if (this.debugInfo) {
         this.debugInfo.style.display = 'none';
       }
       this.fishManager?.setDebugMode(false);
+      this.fishingRod?.setDebugMode(false);
     }
   }
 }

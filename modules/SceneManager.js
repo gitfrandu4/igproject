@@ -108,4 +108,17 @@ export class SceneManager {
       }
     });
   }
+
+  setupCamera() {
+    this.camera = new THREE.PerspectiveCamera(
+      75,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000,
+    );
+
+    // Position camera behind and slightly above the rod's starting position
+    this.camera.position.set(0, 2, 2); // Move back and up
+    this.camera.lookAt(0, 1, -1); // Look at where the rod will be
+  }
 }
