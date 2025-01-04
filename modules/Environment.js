@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Water } from 'three/addons/objects/Water2.js';
-import { grassShader, terrainShader } from './shaders.js';
+import { grassShader, terrainShader } from './shaders/shaders.js';
 import { CelestialManager } from './celestials/CelestialManager.js';
 
 export class Environment {
