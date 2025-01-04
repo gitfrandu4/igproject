@@ -224,17 +224,12 @@ export class FishManager {
   checkForNearbyFish(linePosition) {
     if (!linePosition) return null;
 
-    // If we already have a caught fish, don't catch another
-    if (this.fishes.some((fish) => fish.userData.isCaught)) {
-      return null;
-    }
-
-    // Get the nearest fish
+    // Get the nearest fish that isn't already on ground
     let nearestFish = null;
     let nearestDistance = Infinity;
 
     this.fishes.forEach((fish) => {
-      if (!fish.userData.isCaught && !fish.userData.isOnGround) {
+      if (!fish.userData.isOnGround) {
         const distance = fish.position.distanceTo(linePosition);
         if (distance < nearestDistance) {
           nearestDistance = distance;
@@ -244,9 +239,15 @@ export class FishManager {
     });
 
     // If we found a fish, mark it as caught
-    if (nearestFish) {
+    if (nearestFish && !nearestFish.userData.isCaught) {
       nearestFish.userData.isCaught = true;
       nearestFish.userData.isBeingReeled = true;
+
+      // Add some resistance/struggle behavior
+      nearestFish.userData.strugglePhase = 0;
+      nearestFish.userData.struggleIntensity = 0.5 + Math.random() * 0.5;
+      nearestFish.userData.lastStruggleTime = performance.now();
+
       this.updateFishPosition(nearestFish, linePosition);
     }
 
@@ -260,9 +261,40 @@ export class FishManager {
   updateFishPosition(fish, targetPosition) {
     if (!fish.userData.isBeingReeled) return;
 
-    // Smoothly move fish towards the line
-    const lerpFactor = 0.1;
-    fish.position.lerp(targetPosition, lerpFactor);
+    const currentTime = performance.now();
+    const timeDelta = (currentTime - fish.userData.lastStruggleTime) / 1000;
+
+    // Update struggle phase
+    fish.userData.strugglePhase +=
+      timeDelta * (1 + fish.userData.struggleIntensity);
+    fish.userData.lastStruggleTime = currentTime;
+
+    // Calculate struggle offset
+    const struggleOffset = new THREE.Vector3(
+      Math.sin(fish.userData.strugglePhase * 5) * 0.2,
+      Math.sin(fish.userData.strugglePhase * 3) * 0.1,
+      Math.cos(fish.userData.strugglePhase * 4) * 0.2,
+    ).multiplyScalar(fish.userData.struggleIntensity);
+
+    // Calculate target with struggle
+    const targetWithStruggle = targetPosition.clone().add(struggleOffset);
+
+    // Smoothly move fish towards target with variable speed
+    const lerpFactor = 0.1 * (1 - fish.userData.struggleIntensity * 0.5);
+    fish.position.lerp(targetWithStruggle, lerpFactor);
+
+    // Update fish rotation to face movement direction
+    const direction = new THREE.Vector3().subVectors(
+      targetWithStruggle,
+      fish.position,
+    );
+    if (direction.length() > 0.01) {
+      const targetRotation = Math.atan2(direction.x, direction.z);
+      fish.rotation.y = targetRotation;
+    }
+
+    // Gradually reduce struggle intensity
+    fish.userData.struggleIntensity *= 0.995;
   }
 
   throwFish(fish, landingPosition) {
@@ -271,12 +303,14 @@ export class FishManager {
     fish.userData.isBeingReeled = false;
     fish.userData.isOnGround = true;
 
-    // Calculate arc trajectory
+    // Calculate arc trajectory with some randomness
     const startPos = fish.position.clone();
-    const height = 5; // Maximum height of the arc
-    const duration = 1000; // Duration of throw animation in milliseconds
+    const height = 3 + Math.random() * 4; // Variable height
+    const duration = 800 + Math.random() * 400; // Variable duration
+    const rotations = 2 + Math.random() * 3; // Number of rotations during throw
 
     const startTime = performance.now();
+    const startRotation = fish.rotation.clone();
 
     const animateThrow = () => {
       const currentTime = performance.now();
@@ -284,15 +318,22 @@ export class FishManager {
       const progress = Math.min(elapsed / duration, 1);
 
       if (progress < 1) {
-        // Parabolic arc
+        // Parabolic arc with some wobble
         const x = startPos.x + (landingPosition.x - startPos.x) * progress;
         const z = startPos.z + (landingPosition.z - startPos.z) * progress;
         const y =
           startPos.y +
           height * Math.sin(progress * Math.PI) +
-          (landingPosition.y - startPos.y) * progress;
+          (landingPosition.y - startPos.y) * progress +
+          Math.sin(progress * Math.PI * 4) * 0.2; // Add wobble
 
         fish.position.set(x, y, z);
+
+        // Rotate fish during throw
+        fish.rotation.x = startRotation.x + Math.PI * 2 * rotations * progress;
+        fish.rotation.z =
+          startRotation.z + Math.sin(progress * Math.PI * 6) * 0.5;
+
         requestAnimationFrame(animateThrow);
       } else {
         // Fish has landed
@@ -308,22 +349,29 @@ export class FishManager {
     // Stop fish movement
     fish.userData.isOnGround = true;
 
-    // Rotate fish to lay on its side
-    fish.rotation.z = Math.PI / 2;
+    // Rotate fish to lay on its side with some randomness
+    fish.rotation.z = Math.PI / 2 + (Math.random() * 0.4 - 0.2);
+    fish.rotation.x = Math.random() * 0.3 - 0.15;
 
-    // Optional: Add flopping animation
+    // More dynamic flopping animation
     let flopCount = 0;
-    const maxFlops = 3;
+    const maxFlops = 3 + Math.floor(Math.random() * 3);
     const flopInterval = setInterval(() => {
       if (flopCount >= maxFlops) {
         clearInterval(flopInterval);
         return;
       }
 
-      // Simple flopping animation
-      fish.rotation.y += Math.PI / 4;
+      // Randomized flopping animation
+      const flopIntensity = 1 - flopCount / maxFlops; // Decreasing intensity
+      fish.rotation.y += (Math.PI / 4) * flopIntensity;
+      fish.position.y += 0.1 * flopIntensity;
+      setTimeout(() => {
+        fish.position.y = landingPosition.y;
+      }, 100);
+
       flopCount++;
-    }, 200);
+    }, 200 + Math.random() * 100);
   }
 
   removeFish(fish) {

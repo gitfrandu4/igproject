@@ -7,6 +7,8 @@ export class FishingRod {
   constructor(scene) {
     this.scene = scene;
     this.rod = null;
+    this.reel = null;
+    this.handle = null;
     this.line = null;
     this.pointer = null;
     this.isGrabbed = false;
@@ -15,28 +17,169 @@ export class FishingRod {
     this.lineEndPoint = new THREE.Vector3();
     this.hasFishBite = false;
     this.fishBiteTime = 0;
+    this.loadTextures();
+  }
+
+  async loadTextures() {
+    const textureLoader = new THREE.TextureLoader();
+    const loadTexture = (path) => {
+      return new Promise((resolve, reject) => {
+        textureLoader.load(
+          path,
+          (texture) => {
+            texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+            resolve(texture);
+          },
+          undefined,
+          (error) => reject(error),
+        );
+      });
+    };
+
+    try {
+      this.textures = {
+        wood: await loadTexture('textures/wood/color.jpg'),
+        woodNormal: await loadTexture('textures/wood/normal.jpg'),
+        woodRoughness: await loadTexture('textures/wood/roughness.jpg'),
+        metal: await loadTexture('textures/metal_mesh/color.png'),
+        metalNormal: await loadTexture('textures/metal_mesh/normal.png'),
+        metalRoughness: await loadTexture('textures/metal_mesh/roughness.png'),
+      };
+    } catch (error) {
+      console.error('Error loading rod textures:', error);
+    }
   }
 
   init() {
     this.createRod();
+    this.createReel();
+    this.createHandle();
     this.createLine();
     this.createPointer();
     return this.rod;
   }
 
   createRod() {
-    const rodGeometry = new THREE.CylinderGeometry(0.02, 0.02, 1.5, 8);
-    const rodMaterial = new THREE.MeshStandardMaterial({
-      color: 0x8b4513,
+    // Main rod body with segments
+    const rodGroup = new THREE.Group();
+
+    // Bottom segment (thicker)
+    const bottomGeometry = new THREE.CylinderGeometry(0.02, 0.025, 0.4, 12);
+    const bottomMaterial = new THREE.MeshStandardMaterial({
+      map: this.textures?.wood,
+      normalMap: this.textures?.woodNormal,
+      roughnessMap: this.textures?.woodRoughness,
       roughness: 0.7,
-      metalness: 0.3,
+      metalness: 0.1,
+    });
+    const bottomSegment = new THREE.Mesh(bottomGeometry, bottomMaterial);
+    bottomSegment.position.y = 0.2;
+    rodGroup.add(bottomSegment);
+
+    // Middle segment
+    const middleGeometry = new THREE.CylinderGeometry(0.015, 0.02, 0.6, 12);
+    const middleSegment = new THREE.Mesh(
+      middleGeometry,
+      bottomMaterial.clone(),
+    );
+    middleSegment.position.y = 0.7;
+    rodGroup.add(middleSegment);
+
+    // Top segment (thinnest)
+    const topGeometry = new THREE.CylinderGeometry(0.01, 0.015, 0.5, 12);
+    const topSegment = new THREE.Mesh(topGeometry, bottomMaterial.clone());
+    topSegment.position.y = 1.25;
+    rodGroup.add(topSegment);
+
+    // Add guides (line rings)
+    const guidePositions = [0.5, 0.8, 1.1, 1.4];
+    guidePositions.forEach((y) => {
+      const guide = this.createGuide();
+      guide.position.y = y;
+      guide.scale.setScalar(0.8 - y / 2);
+      rodGroup.add(guide);
     });
 
-    this.rod = new THREE.Mesh(rodGeometry, rodMaterial);
+    this.rod = rodGroup;
     this.rod.rotation.x = Math.PI / 4;
     this.rod.position.set(0, 1, -0.5);
     this.rod.castShadow = true;
     this.scene.add(this.rod);
+  }
+
+  createGuide() {
+    const guide = new THREE.Group();
+    const ringGeometry = new THREE.TorusGeometry(0.02, 0.003, 8, 16);
+    const metalMaterial = new THREE.MeshStandardMaterial({
+      map: this.textures?.metal,
+      normalMap: this.textures?.metalNormal,
+      roughnessMap: this.textures?.metalRoughness,
+      roughness: 0.4,
+      metalness: 0.8,
+    });
+
+    const ring = new THREE.Mesh(ringGeometry, metalMaterial);
+    ring.rotation.x = Math.PI / 2;
+    guide.add(ring);
+
+    // Add support
+    const supportGeometry = new THREE.CylinderGeometry(0.003, 0.003, 0.02, 4);
+    const support = new THREE.Mesh(supportGeometry, metalMaterial);
+    support.position.y = -0.01;
+    guide.add(support);
+
+    return guide;
+  }
+
+  createReel() {
+    const reelGroup = new THREE.Group();
+
+    // Reel body
+    const bodyGeometry = new THREE.CylinderGeometry(0.04, 0.04, 0.06, 16);
+    const metalMaterial = new THREE.MeshStandardMaterial({
+      map: this.textures?.metal,
+      normalMap: this.textures?.metalNormal,
+      roughnessMap: this.textures?.metalRoughness,
+      roughness: 0.4,
+      metalness: 0.8,
+    });
+
+    const reelBody = new THREE.Mesh(bodyGeometry, metalMaterial);
+    reelBody.rotation.z = Math.PI / 2;
+    reelGroup.add(reelBody);
+
+    // Spool
+    const spoolGeometry = new THREE.CylinderGeometry(0.03, 0.03, 0.05, 16);
+    const spool = new THREE.Mesh(spoolGeometry, metalMaterial.clone());
+    spool.rotation.z = Math.PI / 2;
+    spool.position.x = 0.07;
+    reelGroup.add(spool);
+
+    this.reel = reelGroup;
+    this.reel.position.set(0, 0.4, 0.04);
+    this.rod.add(this.reel);
+  }
+
+  createHandle() {
+    const handleGroup = new THREE.Group();
+
+    // Handle grip
+    const gripGeometry = new THREE.CylinderGeometry(0.015, 0.012, 0.08, 8);
+    const gripMaterial = new THREE.MeshStandardMaterial({
+      map: this.textures?.wood,
+      normalMap: this.textures?.woodNormal,
+      roughnessMap: this.textures?.woodRoughness,
+      roughness: 0.9,
+      metalness: 0.1,
+    });
+
+    const grip = new THREE.Mesh(gripGeometry, gripMaterial);
+    grip.rotation.z = Math.PI / 2;
+    handleGroup.add(grip);
+
+    this.handle = handleGroup;
+    this.handle.position.set(-0.08, 0.4, 0.04);
+    this.rod.add(this.handle);
   }
 
   createLine() {
