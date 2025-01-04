@@ -311,12 +311,12 @@ export class FishingRod {
     const sphereMaterial = new THREE.MeshBasicMaterial({
       color: 0x00ff00,
       transparent: true,
-      opacity: 0.1,
+      opacity: 0.2,
       wireframe: true,
     });
     this.grabSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-    this.grabSphere.visible = false; // Only show in debug mode
-    this.rod.add(this.grabSphere);
+    this.grabSphere.visible = false;
+    // The sphere will be added to the controller in the grab method
   }
 
   setDebugMode(enabled) {
@@ -327,6 +327,12 @@ export class FishingRod {
 
   grab(controller = null, controllerPosition = null) {
     if (controller && controllerPosition) {
+      // Add grab sphere to controller if not already added
+      if (this.grabSphere && !this.grabSphere.parent) {
+        controller.add(this.grabSphere);
+        this.grabSphere.position.set(0, 0, 0); // Center on controller
+      }
+
       const rodPosition = new THREE.Vector3();
       this.rod.getWorldPosition(rodPosition);
       const distance = controllerPosition.distanceTo(rodPosition);
@@ -336,7 +342,6 @@ export class FishingRod {
         this.rod.parent = controller;
         this.rod.position.set(0, 0, -0.3);
         this.rod.rotation.set(0, 0, 0);
-        this.grabSphere.visible = false; // Hide sphere when grabbed
         console.log(
           `Rod grabbed by controller. Distance: ${distance.toFixed(2)}`,
         );
@@ -348,7 +353,6 @@ export class FishingRod {
       this.isGrabbed = true;
       this.rod.position.set(0, 1.5, -1);
       this.rod.rotation.set(0, 0, 0);
-      this.grabSphere.visible = false; // Hide sphere when grabbed
       console.log('Rod grabbed by keyboard');
       return true;
     }

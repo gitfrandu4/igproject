@@ -28,7 +28,7 @@ export class Environment {
           (error) => {
             console.error(`Error loading texture ${path}:`, error);
             reject(error);
-          }
+          },
         );
       });
     };
@@ -130,7 +130,7 @@ export class Environment {
           (error) => {
             console.error(`Error loading texture ${path}:`, error);
             reject(error);
-          }
+          },
         );
       });
     };
@@ -164,6 +164,7 @@ export class Environment {
   createGrass() {
     const grassGeometry = new THREE.PlaneGeometry(1, 1, 32, 32);
     const grassMaterial = new THREE.MeshStandardMaterial({
+      vertexShader: grassShader.vertexShader,
       map: this.textures.grassColor,
       normalMap: this.textures.grassNormal,
       roughnessMap: this.textures.grassRoughness,
@@ -192,7 +193,11 @@ export class Environment {
       grass.material.normalMap.rotation = grass.material.map.rotation;
       grass.material.roughnessMap.rotation = grass.material.map.rotation;
       grass.material.aoMap.rotation = grass.material.map.rotation;
-      grass.material.color.setHSL(0.3 + Math.random() * 0.05, 0.5 + Math.random() * 0.2, 0.4 + Math.random() * 0.1);
+      grass.material.color.setHSL(
+        0.3 + Math.random() * 0.05,
+        0.5 + Math.random() * 0.2,
+        0.4 + Math.random() * 0.1,
+      );
       grass.castShadow = true;
       grass.receiveShadow = true;
       this.scene.add(grass);
@@ -221,12 +226,12 @@ export class Environment {
       rock.rotation.set(
         Math.random() * Math.PI,
         Math.random() * Math.PI,
-        Math.random() * Math.PI
+        Math.random() * Math.PI,
       );
       rock.scale.set(
         Math.random() * 0.8 + 0.2,
         Math.random() * 0.5 + 0.2,
-        Math.random() * 0.8 + 0.2
+        Math.random() * 0.8 + 0.2,
       );
       const textureScale = 0.5 + Math.random() * 1.5;
       rock.material.map.repeat.set(textureScale, textureScale);
@@ -237,7 +242,11 @@ export class Environment {
       rock.material.normalMap.rotation = rock.material.map.rotation;
       rock.material.roughnessMap.rotation = rock.material.map.rotation;
       rock.material.aoMap.rotation = rock.material.map.rotation;
-      rock.material.color.setHSL(0 + Math.random() * 0.01, 0 + Math.random() * 0.01, 0.5 + Math.random() * 0.1);
+      rock.material.color.setHSL(
+        0 + Math.random() * 0.01,
+        0 + Math.random() * 0.01,
+        0.5 + Math.random() * 0.1,
+      );
       rock.castShadow = true;
       rock.receiveShadow = true;
       this.scene.add(rock);
@@ -250,7 +259,7 @@ export class Environment {
       this.water.material.uniforms.config.value.y = time * 0.5;
       this.water.material.uniforms.flowDirection.value.set(
         Math.sin(time * 0.1),
-        Math.cos(time * 0.1)
+        Math.cos(time * 0.1),
       );
     }
     this.scene.traverse((object) => {
