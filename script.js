@@ -19,8 +19,22 @@ class Game {
     // Game state
     this.isRodGrabbed = false;
     this.isCasting = false;
-    this.debugMode = false;
-    this.debugInfo = null;
+    this.debugMode = true;
+
+    // Create debug info element
+    this.debugInfo = document.createElement('div');
+    this.debugInfo.style.position = 'fixed';
+    this.debugInfo.style.top = '10px';
+    this.debugInfo.style.left = '10px';
+    this.debugInfo.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+    this.debugInfo.style.color = '#fff';
+    this.debugInfo.style.padding = '10px';
+    this.debugInfo.style.fontFamily = 'monospace';
+    this.debugInfo.style.fontSize = '12px';
+    this.debugInfo.style.whiteSpace = 'pre';
+    this.debugInfo.style.zIndex = '100';
+    this.debugInfo.style.borderRadius = '5px';
+    document.body.appendChild(this.debugInfo);
 
     // Keyboard state
     this.keyboardState = {
@@ -50,14 +64,18 @@ class Game {
       this.fishManager = new FishManager(this.sceneManager.scene);
       await this.fishManager.init();
 
-      // Setup VR controllers
+      // Setup initial camera position for non-VR
+      this.setupNonVRCamera();
+
+      // Setup VR controllers (but don't enable VR by default)
       this.setupVRControllers();
 
-      // Setup keyboard controls
+      // Setup keyboard and mouse controls
       this.setupKeyboardControls();
+      this.setupMouseControls();
 
-      // Initialize VR
-      this.sceneManager.initVR();
+      // Create VR toggle button
+      this.createVRButton();
 
       // Start animation loop
       this.sceneManager.startAnimation(() => this.update());
@@ -66,6 +84,108 @@ class Game {
     } catch (error) {
       console.error('Error initializing game:', error);
     }
+  }
+
+  setupNonVRCamera() {
+    // Position camera for a good view of the lake
+    this.sceneManager.camera.position.set(0, 2, 8);
+    this.sceneManager.camera.lookAt(0, 0, 0);
+  }
+
+  setupMouseControls() {
+    let isMouseDown = false;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+    const mouseSensitivity = 0.002;
+
+    // Mouse look controls
+    document.addEventListener('mousedown', (event) => {
+      if (event.button === 2) {
+        // Right mouse button
+        isMouseDown = true;
+        lastMouseX = event.clientX;
+        lastMouseY = event.clientY;
+      }
+    });
+
+    document.addEventListener('mouseup', (event) => {
+      if (event.button === 2) {
+        // Right mouse button
+        isMouseDown = false;
+      }
+    });
+
+    document.addEventListener('mousemove', (event) => {
+      if (!isMouseDown) return;
+
+      const deltaX = event.clientX - lastMouseX;
+      const deltaY = event.clientY - lastMouseY;
+
+      // Rotate camera horizontally
+      this.sceneManager.camera.rotation.y -= deltaX * mouseSensitivity;
+
+      // Rotate camera vertically, with limits
+      const newRotationX =
+        this.sceneManager.camera.rotation.x - deltaY * mouseSensitivity;
+      this.sceneManager.camera.rotation.x = Math.max(
+        -Math.PI / 3,
+        Math.min(Math.PI / 3, newRotationX),
+      );
+
+      lastMouseX = event.clientX;
+      lastMouseY = event.clientY;
+    });
+
+    // Prevent context menu on right click
+    document.addEventListener('contextmenu', (event) => {
+      event.preventDefault();
+    });
+
+    // Mouse wheel for zoom
+    document.addEventListener('wheel', (event) => {
+      const zoomSpeed = 0.001;
+      const forward = new THREE.Vector3(0, 0, -1);
+      forward.applyQuaternion(this.sceneManager.camera.quaternion);
+      forward.multiplyScalar(event.deltaY * zoomSpeed);
+      this.sceneManager.camera.position.add(forward);
+    });
+  }
+
+  createVRButton() {
+    // Create a custom VR button
+    const vrButton = document.createElement('button');
+    vrButton.style.position = 'absolute';
+    vrButton.style.bottom = '20px';
+    vrButton.style.right = '20px';
+    vrButton.style.padding = '12px 24px';
+    vrButton.style.border = 'none';
+    vrButton.style.borderRadius = '4px';
+    vrButton.style.backgroundColor = '#2196F3';
+    vrButton.style.color = 'white';
+    vrButton.style.font = 'bold 16px Arial';
+    vrButton.style.cursor = 'pointer';
+    vrButton.style.transition = 'background-color 0.3s';
+    vrButton.textContent = 'Enter VR';
+
+    vrButton.addEventListener('mouseover', () => {
+      vrButton.style.backgroundColor = '#1976D2';
+    });
+
+    vrButton.addEventListener('mouseout', () => {
+      vrButton.style.backgroundColor = '#2196F3';
+    });
+
+    // Create the actual VR button but keep it hidden
+    const vrSystemButton = VRButton.createButton(this.sceneManager.renderer);
+    vrSystemButton.style.display = 'none';
+    document.body.appendChild(vrSystemButton);
+
+    // When our custom button is clicked, click the hidden system button
+    vrButton.addEventListener('click', () => {
+      vrSystemButton.click();
+    });
+
+    document.body.appendChild(vrButton);
   }
 
   setupVRControllers() {
@@ -92,6 +212,11 @@ class Game {
       // Show grab sphere when controller is connected
       if (this.fishingRod && this.fishingRod.grabSphere) {
         this.fishingRod.grabSphere.visible = true;
+        // Ensure grab sphere is attached to the controller
+        if (!this.fishingRod.grabSphere.parent) {
+          this.controllerR.add(this.fishingRod.grabSphere);
+          this.fishingRod.grabSphere.position.set(0, 0, 0);
+        }
       }
     });
 
@@ -130,12 +255,16 @@ class Game {
   }
 
   setupKeyboardControls() {
+    // Add camera movement controls for non-VR mode
+    const moveSpeed = 0.1;
+    const rotateSpeed = 0.02;
+
     document.addEventListener('keydown', (event) => {
       switch (event.code) {
         case 'KeyR':
           this.resetGame();
           break;
-        case 'KeyD':
+        case 'KeyQ':
           this.toggleDebugMode();
           break;
         case 'Space':
@@ -149,23 +278,28 @@ class Game {
             this.onSelectStart();
           }
           break;
+        // Camera movement
+        case 'ArrowUp':
         case 'KeyW':
-          this.keyboardState.moveForward = true;
+          this.sceneManager.camera.position.z -=
+            Math.cos(this.sceneManager.camera.rotation.y) * moveSpeed;
+          this.sceneManager.camera.position.x -=
+            Math.sin(this.sceneManager.camera.rotation.y) * moveSpeed;
           break;
+        case 'ArrowDown':
         case 'KeyS':
-          this.keyboardState.moveBackward = true;
+          this.sceneManager.camera.position.z +=
+            Math.cos(this.sceneManager.camera.rotation.y) * moveSpeed;
+          this.sceneManager.camera.position.x +=
+            Math.sin(this.sceneManager.camera.rotation.y) * moveSpeed;
           break;
+        case 'ArrowLeft':
         case 'KeyA':
-          this.keyboardState.moveLeft = true;
+          this.sceneManager.camera.rotation.y += rotateSpeed;
           break;
+        case 'ArrowRight':
         case 'KeyD':
-          this.keyboardState.moveRight = true;
-          break;
-        case 'KeyQ':
-          this.keyboardState.moveUp = true;
-          break;
-        case 'KeyZ':
-          this.keyboardState.moveDown = true;
+          this.sceneManager.camera.rotation.y -= rotateSpeed;
           break;
         case 'KeyF':
           if (this.caughtFish) {
@@ -184,34 +318,22 @@ class Game {
           this.keyboardState.isGrabbing = false;
           this.onSelectEnd();
           break;
-        case 'KeyW':
-          this.keyboardState.moveForward = false;
-          break;
-        case 'KeyS':
-          this.keyboardState.moveBackward = false;
-          break;
-        case 'KeyA':
-          this.keyboardState.moveLeft = false;
-          break;
-        case 'KeyD':
-          this.keyboardState.moveRight = false;
-          break;
-        case 'KeyQ':
-          this.keyboardState.moveUp = false;
-          break;
-        case 'KeyZ':
-          this.keyboardState.moveDown = false;
-          break;
       }
     });
   }
 
   onSelectStart() {
-    const controllerPos = new THREE.Vector3();
-    this.controllerR?.getWorldPosition(controllerPos);
-
-    if (this.fishingRod.grab(this.controllerR, controllerPos)) {
+    if (this.sceneManager.renderer.xr.isPresenting) {
+      // VR Mode
+      const controllerPos = new THREE.Vector3();
+      this.controllerR?.getWorldPosition(controllerPos);
+      if (this.fishingRod.grab(this.controllerR, controllerPos)) {
+        this.isRodGrabbed = true;
+      }
+    } else {
+      // Non-VR Mode
       this.isRodGrabbed = true;
+      this.fishingRod.grab();
     }
   }
 
@@ -252,6 +374,23 @@ class Game {
 
     // Update fishing rod
     if (this.fishingRod) {
+      // In non-VR mode, if rod is grabbed, update its position to follow camera
+      if (this.isRodGrabbed && !this.sceneManager.renderer.xr.isPresenting) {
+        const camera = this.sceneManager.camera;
+        const direction = new THREE.Vector3(0, 0, -1);
+        direction.applyQuaternion(camera.quaternion);
+        const position = camera.position.clone();
+        position.add(direction.multiplyScalar(2));
+
+        // Set rod position and rotation
+        this.fishingRod.rod.position.copy(position);
+        this.fishingRod.rod.rotation.copy(camera.rotation);
+
+        // Adjust rod position slightly down and forward
+        this.fishingRod.rod.position.y -= 0.5;
+        this.fishingRod.rod.position.z -= 0.5;
+      }
+
       this.fishingRod.update(time, this.controllerR);
 
       // Check for fish near the line only when casting
@@ -271,32 +410,34 @@ class Game {
       const fps = Math.round(1 / (time - (this.lastTime || time)));
 
       this.debugInfo.innerHTML = `
-🎮 DEBUG INFO ${'-'.repeat(20)}
+🎮 INFORMACIÓN DE DEPURACIÓN ${'-'.repeat(20)}
 FPS: ${fps} ${fps < 30 ? '⚠️' : '✅'}
-ROD STATUS:
-  Grabbed: ${this.isRodGrabbed ? '✅ YES' : '❌ NO'}
-  Casting: ${this.fishingRod?.isCasting ? '🎣 YES' : '❌ NO'}
-  Has Bite: ${this.fishingRod?.hasFishBite ? '🐟 YES' : '❌ NO'}
+ESTADO DE LA CAÑA:
+  Agarrada: ${this.isRodGrabbed ? '✅ SÍ' : '❌ NO'}
+  Lanzando: ${this.fishingRod?.isCasting ? '🎣 SÍ' : '❌ NO'}
+  Pez Picando: ${this.fishingRod?.hasFishBite ? '🐟 SÍ' : '❌ NO'}
 
-FISH STATUS:
-  Total Fish: ${this.fishManager?.getFishes().length || 0} 🐠
-  Fish Caught: ${caughtFish ? '🎯 YES' : '❌ NO'}
+ESTADO DE LOS PECES:
+  Peces Totales: ${this.fishManager?.getFishes().length || 0} 🐠
+  Pez Atrapado: ${caughtFish ? '🎯 SÍ' : '❌ NO'}
 ${
   caughtFish
-    ? `  Position: (${caughtFish.position
+    ? `  Posición: (${caughtFish.position
         .toArray()
         .map((v) => v.toFixed(2))
         .join(', ')}) 📍`
     : ''
 }
 
-CONTROLS:
-  [E] Grab/Release Rod
-  [SPACE] Cast Line
-  [WASD] Move Rod
-  [QZ] Up/Down
-  [R] Reset Game
-  [D] Toggle Debug
+CONTROLES:
+  [E] Agarrar/Soltar Caña
+  [ESPACIO] Lanzar Línea
+  [WASD/Flechas] Mover Cámara
+  [F] Atrapar Pez
+  [R] Reiniciar Juego
+  [Q] Alternar Depuración
+  [Click Derecho + Ratón] Mirar Alrededor
+  [Rueda del Ratón] Zoom
 ${'-'.repeat(30)}`;
 
       this.lastTime = time;

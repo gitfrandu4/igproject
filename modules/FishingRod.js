@@ -327,6 +327,7 @@ export class FishingRod {
 
   grab(controller = null, controllerPosition = null) {
     if (controller && controllerPosition) {
+      // VR Mode
       // Add grab sphere to controller if not already added
       if (this.grabSphere && !this.grabSphere.parent) {
         controller.add(this.grabSphere);
@@ -342,18 +343,35 @@ export class FishingRod {
         this.rod.parent = controller;
         this.rod.position.set(0, 0, -0.3);
         this.rod.rotation.set(0, 0, 0);
-        console.log(
-          `Rod grabbed by controller. Distance: ${distance.toFixed(2)}`,
-        );
         return true;
       }
-      console.log(`Rod grab attempt failed. Distance: ${distance.toFixed(2)}`);
       return false;
     } else {
+      // Non-VR Mode (Keyboard/Mouse)
       this.isGrabbed = true;
-      this.rod.position.set(0, 1.5, -1);
-      this.rod.rotation.set(0, 0, 0);
-      console.log('Rod grabbed by keyboard');
+
+      // Ensure rod is attached to scene if it's not already
+      if (this.rod.parent !== this.scene) {
+        this.scene.attach(this.rod);
+      }
+
+      // Position the rod in front of the camera
+      const camera = this.scene.camera;
+      if (camera) {
+        const direction = new THREE.Vector3(0, 0, -1);
+        direction.applyQuaternion(camera.quaternion);
+        const position = camera.position.clone();
+        position.add(direction.multiplyScalar(2));
+
+        // Set rod position and rotation
+        this.rod.position.copy(position);
+        this.rod.rotation.copy(camera.rotation);
+
+        // Adjust rod position for better visibility
+        this.rod.position.y -= 0.5;
+        this.rod.position.z -= 0.5;
+      }
+
       return true;
     }
   }

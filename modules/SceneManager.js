@@ -13,12 +13,19 @@ export class SceneManager {
     );
     this.camera.position.set(0, 1.6, 3);
 
+    // Add camera to scene for easy access by other components
+    this.scene.camera = this.camera;
+
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.xr.enabled = true;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 0.5;
+    this.renderer.shadowMap.enabled = true;
+
+    // Add renderer to document immediately
+    document.body.appendChild(this.renderer.domElement);
 
     this.setupLights();
     this.setupSky();
@@ -75,7 +82,7 @@ export class SceneManager {
   }
 
   initVR() {
-    document.body.appendChild(this.renderer.domElement);
+    // Only add VR button, renderer is already in document
     document.body.appendChild(VRButton.createButton(this.renderer));
   }
 
