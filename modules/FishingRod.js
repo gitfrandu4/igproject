@@ -96,10 +96,32 @@ export class FishingRod {
     if (!this.isGrabbed) return;
 
     this.isGrabbed = false;
+
+    // Get the current world position before detaching
+    const rodPosition = new THREE.Vector3();
+    this.rod.getWorldPosition(rodPosition);
+
+    // Calculate a landing position for the fish (away from the water)
+    const throwDirection = new THREE.Vector3();
+    this.rod.getWorldDirection(throwDirection);
+    throwDirection.y = 0; // Keep it horizontal
+    throwDirection.normalize();
+
+    // Calculate landing position (further out from rod position)
+    const landingPosition = rodPosition
+      .clone()
+      .add(throwDirection.multiplyScalar(5 + Math.random() * 3));
+    landingPosition.y = 0; // On the ground level
+
     if (this.rod.parent !== this.scene) {
       this.scene.attach(this.rod);
-      console.log('Rod released');
     }
+
+    // Reset fishing line
+    this.resetFishBite();
+
+    // Return the landing position for the fish
+    return landingPosition;
   }
 
   startCasting(power = 0) {

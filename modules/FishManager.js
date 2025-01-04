@@ -224,12 +224,17 @@ export class FishManager {
   checkForNearbyFish(linePosition) {
     if (!linePosition) return null;
 
-    // Always get the nearest fish regardless of distance
+    // If we already have a caught fish, don't catch another
+    if (this.fishes.some((fish) => fish.userData.isCaught)) {
+      return null;
+    }
+
+    // Get the nearest fish
     let nearestFish = null;
     let nearestDistance = Infinity;
 
     this.fishes.forEach((fish) => {
-      if (!fish.userData.isCaught) {
+      if (!fish.userData.isCaught && !fish.userData.isOnGround) {
         const distance = fish.position.distanceTo(linePosition);
         if (distance < nearestDistance) {
           nearestDistance = distance;
@@ -238,16 +243,18 @@ export class FishManager {
       }
     });
 
-    // If we found any uncaught fish, return it
+    // If we found a fish, mark it as caught
     if (nearestFish) {
       nearestFish.userData.isCaught = true;
       nearestFish.userData.isBeingReeled = true;
-
-      // Make the fish follow the line position
       this.updateFishPosition(nearestFish, linePosition);
     }
 
     return nearestFish;
+  }
+
+  getCaughtFish() {
+    return this.fishes.find((fish) => fish.userData.isCaught);
   }
 
   updateFishPosition(fish, targetPosition) {

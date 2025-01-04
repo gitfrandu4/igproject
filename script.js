@@ -19,7 +19,8 @@ class Game {
     // Game state
     this.isRodGrabbed = false;
     this.isCasting = false;
-    this.caughtFish = null;
+    this.debugMode = false;
+    this.debugInfo = null;
 
     // Keyboard state
     this.keyboardState = {
@@ -120,6 +121,12 @@ class Game {
   setupKeyboardControls() {
     document.addEventListener('keydown', (event) => {
       switch (event.code) {
+        case 'KeyR':
+          this.resetGame();
+          break;
+        case 'KeyD':
+          this.toggleDebugMode();
+          break;
         case 'Space':
           if (this.keyboardState.isGrabbing) {
             this.onSqueezeStart();
@@ -199,9 +206,14 @@ class Game {
 
   onSelectEnd() {
     if (this.isRodGrabbed) {
-      const controllerPos = new THREE.Vector3();
-      this.controllerR?.getWorldPosition(controllerPos);
-      this.fishingRod.release(this.controllerR, controllerPos);
+      const landingPosition = this.fishingRod.release();
+
+      // If we have a caught fish, throw it
+      const caughtFish = this.fishManager.getCaughtFish();
+      if (caughtFish && landingPosition) {
+        this.fishManager.throwFish(caughtFish, landingPosition);
+      }
+
       this.isRodGrabbed = false;
     }
   }
@@ -231,16 +243,36 @@ class Game {
     if (this.fishingRod) {
       this.fishingRod.update(time, this.controllerR);
 
-      // Check for fish near the line
+      // Check for fish near the line only when casting
       if (this.fishingRod.isCasting) {
         const nearbyFish = this.fishManager.checkForNearbyFish(
           this.fishingRod.lineEndPoint,
         );
-        if (nearbyFish && !this.caughtFish) {
-          this.caughtFish = nearbyFish;
+        if (nearbyFish) {
           this.fishingRod.showFishBite();
         }
       }
+    }
+
+    // Update debug info
+    if (this.debugMode && this.debugInfo) {
+      const caughtFish = this.fishManager?.getCaughtFish();
+      this.debugInfo.innerHTML = `
+        FPS: ${Math.round(1 / (time - (this.lastTime || time)))}
+        Casting: ${this.fishingRod?.isCasting ? 'YES' : 'NO'}
+        Rod Grabbed: ${this.isRodGrabbed ? 'YES' : 'NO'}
+        Fish Count: ${this.fishManager?.getFishes().length || 0}
+        Caught Fish: ${caughtFish ? 'YES' : 'NO'}
+        ${
+          caughtFish
+            ? `Fish Position: ${caughtFish.position
+                .toArray()
+                .map((v) => v.toFixed(2))
+                .join(', ')}`
+            : ''
+        }
+      `;
+      this.lastTime = time;
     }
 
     // Update keyboard-based rod movement
@@ -292,6 +324,64 @@ class Game {
     this.controllerR?.removeEventListener('selectend', this.onSelectEnd);
     this.controllerR?.removeEventListener('squeezestart', this.onSqueezeStart);
     this.controllerR?.removeEventListener('squeezeend', this.onSqueezeEnd);
+  }
+
+  resetGame() {
+    console.log('Resetting game...');
+
+    // Reset fish manager
+    if (this.fishManager) {
+      // Remove all fish from the scene
+      const allFish = this.fishManager.getFishes();
+      allFish.forEach((fish) => {
+        this.fishManager.removeFish(fish);
+      });
+
+      // Reinitialize fish
+      this.fishManager.init();
+    }
+
+    // Reset fishing rod
+    if (this.fishingRod) {
+      this.fishingRod.release();
+      this.fishingRod.resetFishBite();
+      this.isRodGrabbed = false;
+      this.isCasting = false;
+    }
+
+    console.log('Game reset complete');
+  }
+
+  toggleDebugMode() {
+    this.debugMode = !this.debugMode;
+    console.log(`Debug mode: ${this.debugMode ? 'ON' : 'OFF'}`);
+
+    if (this.debugMode) {
+      // Create debug info display
+      if (!this.debugInfo) {
+        this.debugInfo = document.createElement('div');
+        this.debugInfo.style.position = 'fixed';
+        this.debugInfo.style.top = '10px';
+        this.debugInfo.style.left = '10px';
+        this.debugInfo.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        this.debugInfo.style.color = 'white';
+        this.debugInfo.style.padding = '10px';
+        this.debugInfo.style.fontFamily = 'monospace';
+        this.debugInfo.style.fontSize = '14px';
+        this.debugInfo.style.zIndex = '1000';
+        document.body.appendChild(this.debugInfo);
+      }
+      this.debugInfo.style.display = 'block';
+
+      // Enable debug mode in managers
+      this.fishManager?.setDebugMode(true);
+    } else {
+      // Hide debug info
+      if (this.debugInfo) {
+        this.debugInfo.style.display = 'none';
+      }
+      this.fishManager?.setDebugMode(false);
+    }
   }
 }
 
