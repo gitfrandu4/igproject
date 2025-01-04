@@ -24,6 +24,7 @@
     - [FBXLoader](#fbxloader)
   - [Configuración y Formato de Código](#configuración-y-formato-de-código)
   - [Pasos para Ejecutar el Proyecto](#pasos-para-ejecutar-el-proyecto)
+  - [Referencias y Bibliografía](#referencias-y-bibliografía)
 
 ---
 
@@ -326,9 +327,10 @@ Cada módulo está diseñado siguiendo principios de programación orientada a o
 
 ### Ammo.js
 
-Se utiliza para la **simulación física y detección de colisiones**. Lo utilizamos para:  
-- Calcular interacciones entre la caña, la línea y los peces (por ejemplo, si se desea una física más realista del sedal o colisiones con objetos).  
-- Manejar el movimiento y colisiones cuando el pez es arrojado fuera del agua.  
+Se utiliza para la **simulación física y detección de colisiones**. Lo utilizamos para:
+
+- Calcular interacciones entre la caña, la línea y los peces (por ejemplo, si se desea una física más realista del sedal o colisiones con objetos).
+- Manejar el movimiento y colisiones cuando el pez es arrojado fuera del agua.
 
 En este proyecto, la configuración de Ammo.js se realiza cargando el script `ammo.js` (versión compilada de Bullet Physics para Web), y luego llamando a:
 
@@ -340,24 +342,24 @@ Ammo().then(() => {
 
 ### three.js
 
-**three.js** es la librería principal para renderizado 3D. En este proyecto se usa para:  
+**three.js** es la librería principal para renderizado 3D. En este proyecto se usa para:
 
-- Crear la escena, cámara y renderizador.  
-- Incorporar la compatibilidad con **WebXR** a través de `renderer.xr.enabled = true;` y la clase `VRButton`.  
-- Añadir geometrías (Cañas, Peces, Entorno) y materiales basados en shaders personalizables.  
+- Crear la escena, cámara y renderizador.
+- Incorporar la compatibilidad con **WebXR** a través de `renderer.xr.enabled = true;` y la clase `VRButton`.
+- Añadir geometrías (Cañas, Peces, Entorno) y materiales basados en shaders personalizables.
 - Manejar luces, sombras y otros efectos de postprocesado (por ejemplo, tono HDR con `ACESFilmicToneMapping`).
 
 ### FBXLoader
 
-Permite **cargar modelos** en formato `.fbx` para dar vida a los peces animados:  
+Permite **cargar modelos** en formato `.fbx` para dar vida a los peces animados:
 
 - Se importa desde el directorio de addons de three.js, por ejemplo:
-  
+
 ```js
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 ```
 
-- Cada modelo se clona y se posiciona en el lago, agregando rotación, escalado y diferentes parámetros de movimiento.  
+- Cada modelo se clona y se posiciona en el lago, agregando rotación, escalado y diferentes parámetros de movimiento.
 - Gracias a `FBXLoader`, es posible tener peces con animaciones complejas (si el `.fbx` incluye rigs y animaciones), o simplemente mallas estáticas para un movimiento procedural.
 
 ---
@@ -398,6 +400,40 @@ python -m http.server 8080
 
 - Usa el botón "Enter VR" que aparece en la esquina inferior derecha.
 - Coloca el visor VR y disfruta de la experiencia.
+
+---
+
+## Referencias y Bibliografía
+
+1. **Three.js Documentation**
+
+   - [https://threejs.org/docs/](https://threejs.org/docs/)
+   - Framework base del proyecto
+   - Referencia para implementación de geometrías y materiales
+
+2. **WebXR Device API Specification**
+
+   - [https://www.w3.org/TR/webxr/](https://www.w3.org/TR/webxr/)
+   - Estándar para implementación de VR
+   - Base para el sistema de interacción VR
+
+3. **GLSL Shader Language Specification**
+
+   - [https://www.khronos.org/registry/OpenGL/specs/gl/GLSLangSpec.4.60.pdf](https://www.khronos.org/registry/OpenGL/specs/gl/GLSLangSpec.4.60.pdf)
+   - Referencia para desarrollo de shaders personalizados
+
+4. **Bullet Physics Documentation**
+   - [https://pybullet.org/wordpress/](https://pybullet.org/wordpress/)
+   - Base de Ammo.js para simulación física
+
+5. **"Learn OpenGL"**
+
+   - [https://learnopengl.com/](https://learnopengl.com/)
+   - Referencia para conceptos de renderizado y shaders
+
+6. **"The Book of Shaders"**
+   - [https://thebookofshaders.com/](https://thebookofshaders.com/)
+   - Guía para desarrollo de shaders GLSL
 
 ---
 
