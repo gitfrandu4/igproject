@@ -1,16 +1,14 @@
 import * as THREE from 'three';
 import { Water } from 'three/addons/objects/Water2.js';
-import { Sky } from 'three/addons/objects/Sky.js';
 import { grassShader, terrainShader } from './shaders.js';
+import { CelestialManager } from './celestials/CelestialManager.js';
 
 export class Environment {
   constructor(scene) {
     this.scene = scene;
     this.water = null;
     this.shore = null;
-    this.sky = null;
-    this.sun = null;
-    this.sunPosition = new THREE.Vector3();
+    this.celestials = new CelestialManager(scene);
     this.textures = {};
     this.timeOfDay = 0;
     this.loadTextures();
@@ -48,12 +46,13 @@ export class Environment {
         rockAO: await loadTexture('textures/rock/ao.jpg'),
       };
       this.setupEnvironment();
-    } catch (error) {}
+    } catch (error) {
+      console.warn('Error loading textures:', error);
+    }
   }
 
   setupEnvironment() {
     this.createLighting();
-    this.createSky();
     this.createTerrain();
     this.createWater();
     this.createShoreline();
@@ -67,163 +66,6 @@ export class Environment {
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
     this.scene.add(ambientLight);
-
-    this.sun = new THREE.DirectionalLight(0xffffff, 1);
-    this.sun.position.set(0, 50, 0);
-    this.sun.castShadow = true;
-    this.sun.shadow.mapSize.width = 4096;
-    this.sun.shadow.mapSize.height = 4096;
-    this.sun.shadow.camera.near = 0.5;
-    this.sun.shadow.camera.far = 100;
-    this.sun.shadow.camera.left = -30;
-    this.sun.shadow.camera.right = 30;
-    this.sun.shadow.camera.top = 30;
-    this.sun.shadow.camera.bottom = -30;
-    this.scene.add(this.sun);
-  }
-
-  createSky() {
-    // Create sky dome
-    const skyGeometry = new THREE.SphereGeometry(400, 32, 32);
-    const skyMaterial = new THREE.ShaderMaterial({
-      uniforms: {
-        topColor: { value: new THREE.Color(0x0077ff) },
-        bottomColor: { value: new THREE.Color(0x89b2eb) },
-        offset: { value: 20 },
-        exponent: { value: 0.6 },
-        time: { value: 0 },
-      },
-      vertexShader: `
-        varying vec3 vWorldPosition;
-        void main() {
-          vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-          vWorldPosition = worldPosition.xyz;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        uniform vec3 topColor;
-        uniform vec3 bottomColor;
-        uniform float offset;
-        uniform float exponent;
-        uniform float time;
-        varying vec3 vWorldPosition;
-        
-        void main() {
-          float h = normalize(vWorldPosition + offset).y;
-          float dayFactor = (sin(time * 0.02) + 1.0) * 0.5;
-          vec3 sky = mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0));
-          
-          // Darken the sky during night
-          sky = mix(sky * 0.1, sky, dayFactor);
-          
-          gl_FragColor = vec4(sky, 1.0);
-        }
-      `,
-      side: THREE.BackSide,
-    });
-
-    this.sky = new THREE.Mesh(skyGeometry, skyMaterial);
-    this.scene.add(this.sky);
-
-    // Create sun
-    const sunGeometry = new THREE.SphereGeometry(20, 32, 32);
-    const sunMaterial = new THREE.ShaderMaterial({
-      uniforms: {
-        time: { value: 0 },
-        color: { value: new THREE.Color(0xffdd66) },
-      },
-      vertexShader: `
-        varying vec3 vNormal;
-        void main() {
-          vNormal = normalize(normalMatrix * normal);
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        uniform float time;
-        uniform vec3 color;
-        varying vec3 vNormal;
-        void main() {
-          float intensity = pow(0.6 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.0);
-          intensity *= 1.0 + sin(time * 2.0) * 0.2;
-          gl_FragColor = vec4(color, 1.0) * vec4(vec3(1.0), intensity);
-        }
-      `,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-    });
-    this.sunSphere = new THREE.Mesh(sunGeometry, sunMaterial);
-    this.scene.add(this.sunSphere);
-
-    // Create moon
-    const moonGeometry = new THREE.SphereGeometry(15, 32, 32);
-    const moonMaterial = new THREE.ShaderMaterial({
-      uniforms: {
-        time: { value: 0 },
-        color: { value: new THREE.Color(0xaaaacc) },
-      },
-      vertexShader: `
-        varying vec3 vNormal;
-        void main() {
-          vNormal = normalize(normalMatrix * normal);
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        uniform float time;
-        uniform vec3 color;
-        varying vec3 vNormal;
-        void main() {
-          float intensity = pow(0.7 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.0);
-          intensity *= 0.8 + sin(time) * 0.1;
-          gl_FragColor = vec4(color, 1.0) * vec4(vec3(1.0), intensity);
-        }
-      `,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-    });
-    this.moonSphere = new THREE.Mesh(moonGeometry, moonMaterial);
-    this.scene.add(this.moonSphere);
-
-    // Create stars
-    const starsGeometry = new THREE.BufferGeometry();
-    const starsVertices = [];
-    const starColors = [];
-
-    for (let i = 0; i < 2000; i++) {
-      const r = 350;
-      const theta = 2 * Math.PI * Math.random();
-      const phi = Math.acos(2 * Math.random() - 1);
-      const x = r * Math.sin(phi) * Math.cos(theta);
-      const y = r * Math.sin(phi) * Math.sin(theta);
-      const z = r * Math.cos(phi);
-
-      starsVertices.push(x, y, z);
-
-      // Random star color (white to slight blue)
-      const intensity = 0.5 + Math.random() * 0.5;
-      starColors.push(intensity, intensity, intensity + Math.random() * 0.2);
-    }
-
-    starsGeometry.setAttribute(
-      'position',
-      new THREE.Float32BufferAttribute(starsVertices, 3),
-    );
-    starsGeometry.setAttribute(
-      'color',
-      new THREE.Float32BufferAttribute(starColors, 3),
-    );
-
-    const starsMaterial = new THREE.PointsMaterial({
-      size: 2,
-      vertexColors: true,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-    });
-
-    this.stars = new THREE.Points(starsGeometry, starsMaterial);
-    this.scene.add(this.stars);
   }
 
   createTerrain() {
@@ -414,48 +256,11 @@ export class Environment {
     }
   }
 
-  updateSunPosition(time) {
-    if (!this.sky || !this.sunSphere || !this.moonSphere) return;
-
-    // Update sky shader time
-    this.sky.material.uniforms.time.value = time;
-
-    // Calculate sun and moon positions
-    const angle = time * 0.02;
-    const radius = 300;
-
-    // Sun position
-    const sunX = Math.cos(angle) * radius;
-    const sunY = Math.sin(angle) * radius;
-    this.sunSphere.position.set(sunX, sunY, 0);
-    this.sunSphere.material.uniforms.time.value = time;
-
-    // Moon position (opposite to sun)
-    const moonX = Math.cos(angle + Math.PI) * radius;
-    const moonY = Math.sin(angle + Math.PI) * radius;
-    this.moonSphere.position.set(moonX, moonY, 0);
-    this.moonSphere.material.uniforms.time.value = time;
-
-    // Update stars visibility based on time of day
-    if (this.stars) {
-      const dayFactor = (Math.sin(time * 0.02) + 1) * 0.5;
-      this.stars.material.opacity = 1 - dayFactor;
-    }
-
-    // Update directional light
-    if (this.sun) {
-      this.sun.position
-        .copy(this.sunSphere.position)
-        .normalize()
-        .multiplyScalar(50);
-      // Adjust light intensity based on sun height
-      this.sun.intensity = Math.max(0.2, Math.sin(angle) * 0.8 + 0.2);
-    }
-  }
-
   update(time) {
     this.timeOfDay = time;
-    if (this.water && this.water.material.uniforms) {
+
+    // Update water if available
+    if (this.water?.material?.uniforms) {
       this.water.material.uniforms.config.value.x = time * 0.5;
       this.water.material.uniforms.config.value.y = time * 0.5;
       this.water.material.uniforms.flowDirection.value.set(
@@ -463,16 +268,18 @@ export class Environment {
         Math.cos(time * 0.1),
       );
     }
+
+    // Update materials with time uniforms
     this.scene.traverse((object) => {
-      if (
-        object.material &&
-        object.material.uniforms &&
-        object.material.uniforms.time
-      ) {
+      if (object.material?.uniforms?.time) {
         object.material.uniforms.time.value = time;
       }
     });
-    this.updateSunPosition(time);
+
+    // Update celestials
+    if (this.celestials) {
+      this.celestials.update(time);
+    }
   }
 
   dispose() {
@@ -483,6 +290,9 @@ export class Environment {
     if (this.shore) {
       this.shore.geometry.dispose();
       this.shore.material.dispose();
+    }
+    if (this.celestials) {
+      this.celestials.dispose();
     }
     this.scene.traverse((object) => {
       if (object.geometry) {
