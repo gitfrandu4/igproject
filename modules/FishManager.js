@@ -170,45 +170,45 @@ export class FishManager {
         }
       });
 
-      // Update fish position with smooth movement
-      fish.userData.angle += fish.userData.speed;
+      // Only update swimming fish
+      if (!fish.userData.isCaught && !fish.userData.isOnGround) {
+        // Update fish position with smooth movement
+        fish.userData.angle += fish.userData.speed;
 
-      const newX =
-        fish.userData.centerX +
-        Math.cos(fish.userData.angle) * fish.userData.radius;
-      const newZ =
-        fish.userData.centerZ +
-        Math.sin(fish.userData.angle) * fish.userData.radius;
-      const newY =
-        fish.userData.baseY +
-        Math.sin(fish.userData.angle * 2) * fish.userData.verticalOffset;
+        const newX =
+          fish.userData.centerX +
+          Math.cos(fish.userData.angle) * fish.userData.radius;
+        const newZ =
+          fish.userData.centerZ +
+          Math.sin(fish.userData.angle) * fish.userData.radius;
+        const newY =
+          fish.userData.baseY +
+          Math.sin(fish.userData.angle * 2) * fish.userData.verticalOffset;
 
-      // Ensure fish stays at proper depth
-      const constrainedY = Math.max(
-        fish.userData.isRed
-          ? FISH_CONFIG.RED.minDepth
-          : FISH_CONFIG.REGULAR.minDepth,
-        Math.min(
-          newY,
+        // Ensure fish stays at proper depth
+        const constrainedY = Math.max(
           fish.userData.isRed
-            ? FISH_CONFIG.RED.maxDepth
-            : FISH_CONFIG.REGULAR.maxDepth,
-        ),
-      );
+            ? FISH_CONFIG.RED.minDepth
+            : FISH_CONFIG.REGULAR.minDepth,
+          Math.min(
+            newY,
+            fish.userData.isRed
+              ? FISH_CONFIG.RED.maxDepth
+              : FISH_CONFIG.REGULAR.maxDepth,
+          ),
+        );
 
-      fish.position.set(newX, constrainedY, newZ);
+        fish.position.set(newX, constrainedY, newZ);
 
-      // Smooth rotation towards movement direction
-      const targetRotation = Math.atan2(
-        newX - fish.position.x,
-        newZ - fish.position.z,
-      );
-      fish.rotation.y = targetRotation + Math.PI / 2;
-
-      // Debug logging if enabled
-      if (this.debugMode && linePosition) {
-        const distance = fish.position.distanceTo(linePosition);
-        console.log(`Fish distance to line: ${distance.toFixed(2)}`);
+        // Smooth rotation towards movement direction
+        const targetRotation = Math.atan2(
+          newX - fish.position.x,
+          newZ - fish.position.z,
+        );
+        fish.rotation.y = targetRotation + Math.PI / 2;
+      } else if (fish.userData.isBeingReeled && linePosition) {
+        // Update position for fish being reeled in
+        this.updateFishPosition(fish, linePosition);
       }
     });
   }
@@ -224,45 +224,99 @@ export class FishManager {
   checkForNearbyFish(linePosition) {
     if (!linePosition) return null;
 
-    const catchDistance = 0.5; // Distance threshold for catching fish
+    // Always get the nearest fish regardless of distance
     let nearestFish = null;
     let nearestDistance = Infinity;
 
     this.fishes.forEach((fish) => {
-      const distance = fish.position.distanceTo(linePosition);
-
-      // Only consider fish within catch distance and not already caught
-      if (
-        distance < catchDistance &&
-        distance < nearestDistance &&
-        !fish.userData.isCaught
-      ) {
-        nearestDistance = distance;
-        nearestFish = fish;
-      }
-
-      // Debug visualization if debug mode is enabled
-      if (this.debugMode) {
-        console.log(`Fish distance to line: ${distance.toFixed(2)}`);
+      if (!fish.userData.isCaught) {
+        const distance = fish.position.distanceTo(linePosition);
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearestFish = fish;
+        }
       }
     });
+
+    // If we found any uncaught fish, return it
+    if (nearestFish) {
+      nearestFish.userData.isCaught = true;
+      nearestFish.userData.isBeingReeled = true;
+
+      // Make the fish follow the line position
+      this.updateFishPosition(nearestFish, linePosition);
+    }
 
     return nearestFish;
   }
 
-  catchFish(fish) {
-    if (!fish || fish.userData.isCaught) return;
+  updateFishPosition(fish, targetPosition) {
+    if (!fish.userData.isBeingReeled) return;
 
-    fish.userData.isCaught = true;
-    // Optionally add visual feedback when fish is caught
-    fish.traverse((child) => {
-      if (child.isMesh && child.material.uniforms) {
-        child.material.uniforms.color.value.setHex(0xffff00); // Highlight caught fish
+    // Smoothly move fish towards the line
+    const lerpFactor = 0.1;
+    fish.position.lerp(targetPosition, lerpFactor);
+  }
+
+  throwFish(fish, landingPosition) {
+    if (!fish || !fish.userData.isCaught) return;
+
+    fish.userData.isBeingReeled = false;
+    fish.userData.isOnGround = true;
+
+    // Calculate arc trajectory
+    const startPos = fish.position.clone();
+    const height = 5; // Maximum height of the arc
+    const duration = 1000; // Duration of throw animation in milliseconds
+
+    const startTime = performance.now();
+
+    const animateThrow = () => {
+      const currentTime = performance.now();
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      if (progress < 1) {
+        // Parabolic arc
+        const x = startPos.x + (landingPosition.x - startPos.x) * progress;
+        const z = startPos.z + (landingPosition.z - startPos.z) * progress;
+        const y =
+          startPos.y +
+          height * Math.sin(progress * Math.PI) +
+          (landingPosition.y - startPos.y) * progress;
+
+        fish.position.set(x, y, z);
+        requestAnimationFrame(animateThrow);
+      } else {
+        // Fish has landed
+        fish.position.copy(landingPosition);
+        this.onFishLanded(fish);
       }
-    });
+    };
 
-    // Remove the fish after a short delay
-    setTimeout(() => this.removeFish(fish), 1000);
+    animateThrow();
+  }
+
+  onFishLanded(fish) {
+    // Stop fish movement
+    fish.userData.isOnGround = true;
+
+    // Rotate fish to lay on its side
+    fish.rotation.z = Math.PI / 2;
+
+    // Optional: Add flopping animation
+    let flopCount = 0;
+    const maxFlops = 3;
+    const flopInterval = setInterval(() => {
+      if (flopCount >= maxFlops) {
+        clearInterval(flopInterval);
+        return;
+      }
+
+      // Simple flopping animation
+      fish.rotation.y += Math.PI / 4;
+      flopCount++;
+    }, 200);
   }
 
   removeFish(fish) {

@@ -13,6 +13,8 @@ export class FishingRod {
     this.isCasting = false;
     this.castPower = 0;
     this.lineEndPoint = new THREE.Vector3();
+    this.hasFishBite = false;
+    this.fishBiteTime = 0;
   }
 
   init() {
@@ -145,6 +147,13 @@ export class FishingRod {
       endPoint.x += Math.sin(time * 1.5) * 0.05;
       endPoint.z += Math.cos(time * 1.5) * 0.05;
 
+      // Add stronger movement if there's a fish bite
+      if (this.hasFishBite) {
+        const biteIntensity = Math.sin(time * 10) * 0.2;
+        endPoint.y += biteIntensity;
+        endPoint.x += biteIntensity * 0.5;
+      }
+
       this.line.geometry.setFromPoints([startPoint, endPoint]);
     }
 
@@ -190,5 +199,53 @@ export class FishingRod {
         }
       }
     });
+  }
+
+  showFishBite() {
+    this.hasFishBite = true;
+    this.fishBiteTime = performance.now();
+
+    // Change line color to indicate fish bite
+    if (this.line) {
+      this.line.material.color.setHex(0xff0000); // Red color
+      this.line.material.opacity = 1.0;
+
+      // Add line tension animation
+      const originalLineLength =
+        this.line.geometry.attributes.position.array[5];
+      const animateLine = () => {
+        if (!this.hasFishBite) return;
+
+        const time = performance.now();
+        const tension = Math.sin(time * 0.01) * 0.2;
+        const positions = this.line.geometry.attributes.position.array;
+        positions[5] = originalLineLength + tension;
+        this.line.geometry.attributes.position.needsUpdate = true;
+
+        requestAnimationFrame(animateLine);
+      };
+
+      animateLine();
+
+      // Reset line after 2 seconds if fish not caught
+      setTimeout(() => {
+        if (this.hasFishBite) {
+          this.resetFishBite();
+        }
+      }, 2000);
+    }
+
+    // Add vibration if using a controller
+    if (this.rod.parent && this.rod.parent.vibrate) {
+      this.rod.parent.vibrate(100);
+    }
+  }
+
+  resetFishBite() {
+    this.hasFishBite = false;
+    if (this.line) {
+      this.line.material.color.setHex(0xffffff); // Reset to white
+      this.line.material.opacity = 0.6;
+    }
   }
 }
