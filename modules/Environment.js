@@ -182,7 +182,7 @@ export class Environment {
       alphaTest: 0.5,
     });
 
-    for (let i = 0; i < 200; i++) {
+    for (let i = 0; i < 1000; i++) {
       const angle = Math.random() * Math.PI * 2;
       const radius = 6 + Math.random() * 13;
       const x = Math.cos(angle) * radius;
@@ -191,7 +191,7 @@ export class Environment {
       const grass = new THREE.Mesh(grassGeometry, grassMaterial.clone());
       grass.position.set(x, -0.3, z);
       grass.rotation.x = -Math.PI / 2;
-      grass.scale.set(0.3 + Math.random() * 0.4, 0.3 + Math.random() * 0.7, 1);
+      grass.scale.set(0.8 + Math.random() * 0.4, 0.8 + Math.random() * 0.7, 1);
 
       const textureScale = 0.5 + Math.random() * 1.5;
       grass.material.map.repeat.set(textureScale, textureScale);
@@ -219,18 +219,18 @@ export class Environment {
       aoMap: this.textures.rockAO,
       displacementMap: this.textures.rockHeight,
       displacementScale: 0.1,
-      roughness: 0.9,
-      metalness: 0.1,
+      roughness: 1,
+      metalness: 1,
     });
 
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 30; i++) {
       const angle = Math.random() * Math.PI * 2;
       const radius = 6 + Math.random() * 13;
       const x = Math.cos(angle) * radius;
       const z = Math.sin(angle) * radius;
 
       const rock = new THREE.Mesh(rockGeometry, rockMaterial.clone());
-      rock.position.set(x, -0.3, z);
+      rock.position.set(x, -0.1, z);
       rock.rotation.set(
         Math.random() * Math.PI,
         Math.random() * Math.PI,
