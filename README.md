@@ -56,9 +56,10 @@ VR Fishing es un simulador de pesca en Realidad Virtual (VR) desarrollado con **
 │   │   ├── Sun.js
 │   │   ├── Moon.js
 │   │   └── Stars.js
-│   ├── shaders.js
 │   └── shaders/
-│       └── skyShaders.js
+│       ├── skyShaders.js
+│       ├── fishShaders.js
+│       └── sunShaders.js
 ├── models/
 │   ├── fish.fbx
 │   └── fishred.fbx
@@ -289,7 +290,6 @@ Los shaders han sido modularizados en archivos separados dentro de la carpeta `s
    - Caustics: Simula el efecto de la luz atravesando el agua
    - Rim lighting: Añade un efecto de borde iluminado para mejor visibilidad
    - Color dinámico: Modula el color base con los efectos para dar realismo
-
 
 Cada módulo está diseñado siguiendo principios de programación orientada a objetos y patrones de diseño comunes en el desarrollo de aplicaciones 3D. La arquitectura modular permite una fácil extensibilidad y mantenimiento del código, mientras que el uso de shaders personalizados y técnicas avanzadas de renderizado asegura un rendimiento óptimo y efectos visuales de alta calidad.
 

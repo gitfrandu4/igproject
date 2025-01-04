@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { sunShader } from '../shaders/skyShaders.js';
+import { sunGlowShader } from '../shaders/sunShaders.js';
 
 /**
  * Class representing the Sun with dynamic lighting effects
@@ -43,27 +44,13 @@ export class Sun {
         time: { value: 0 },
         color: { value: new THREE.Color(0xffdd66) },
       },
-      vertexShader: `
-        varying vec3 vNormal;
-        void main() {
-          vNormal = normalize(normalMatrix * normal);
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        uniform float time;
-        uniform vec3 color;
-        varying vec3 vNormal;
-        void main() {
-          float intensity = pow(0.6 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 3.0);
-          intensity *= 1.0 + sin(time * 3.0) * 0.2;
-          gl_FragColor = vec4(color, intensity * 0.5);
-        }
-      `,
+      vertexShader: sunGlowShader.vertexShader,
+      fragmentShader: sunGlowShader.fragmentShader,
       transparent: true,
       blending: THREE.AdditiveBlending,
       side: THREE.BackSide,
     });
+
     const sunGlow = new THREE.Mesh(glowGeometry, glowMaterial);
     this.sunSphere.add(sunGlow);
 
