@@ -161,7 +161,7 @@ export class FishManager {
 
   update(time, linePosition) {
     this.fishes.forEach((fish) => {
-      if (!fish.userData) return;
+      if (!fish.userData || fish.userData.isOutOfWater) return;
 
       // Update shader uniforms
       fish.traverse((child) => {
@@ -218,7 +218,17 @@ export class FishManager {
   }
 
   getFishes() {
+    // Only return active fish (those still in the water)
+    return this.fishes.filter((fish) => !fish.userData.isOutOfWater);
+  }
+
+  getAllFishes() {
+    // Return all fish, including those out of water
     return this.fishes;
+  }
+
+  getCaughtFish() {
+    return this.fishes.find((fish) => fish.userData.isCaught);
   }
 
   checkForNearbyFish(linePosition) {
@@ -252,10 +262,6 @@ export class FishManager {
     }
 
     return nearestFish;
-  }
-
-  getCaughtFish() {
-    return this.fishes.find((fish) => fish.userData.isCaught);
   }
 
   updateFishPosition(fish, targetPosition) {
@@ -302,6 +308,12 @@ export class FishManager {
 
     // Remove fish from caught state
     this.caughtFish = null;
+    fish.userData.isCaught = false;
+    fish.userData.isBeingReeled = false;
+
+    // Mark fish as caught and out of water
+    fish.userData.isOutOfWater = true;
+    fish.userData.isActive = false;
 
     // Calculate throw trajectory
     const startPosition = fish.position.clone();
@@ -341,15 +353,42 @@ export class FishManager {
       } else {
         // Animation complete
         fish.position.copy(endPosition);
-        fish.rotation.set(0, Math.random() * Math.PI * 2, 0); // Random final rotation
+        fish.rotation.set(Math.PI / 2, 0, Math.random() * Math.PI * 2); // Fish lies on its side
 
-        // Re-enable fish AI behavior
-        fish.isActive = true;
+        // Create a marker for the caught fish
+        this.createCaughtFishMarker(fish);
       }
     };
 
     // Start animation
     animate();
+  }
+
+  createCaughtFishMarker(fish) {
+    // Create a simple marker geometry
+    const markerGeometry = new THREE.CylinderGeometry(0.1, 0, 0.3, 4);
+    const markerMaterial = new THREE.MeshBasicMaterial({
+      color: fish.userData.isRed ? 0xff0000 : 0x00ff00,
+      transparent: true,
+      opacity: 0.6,
+    });
+
+    const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+    marker.position.copy(fish.position);
+    marker.position.y += 0.5; // Float above the ground
+    marker.rotation.x = Math.PI; // Point downwards
+
+    // Add some animation
+    const animate = () => {
+      marker.position.y =
+        fish.position.y + 0.5 + Math.sin(performance.now() * 0.002) * 0.1;
+      marker.rotation.y += 0.02;
+      requestAnimationFrame(animate);
+    };
+    animate();
+
+    this.scene.add(marker);
+    fish.userData.marker = marker;
   }
 
   onFishLanded(fish) {
