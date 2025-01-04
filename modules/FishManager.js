@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { fishShaders } from './shaders/fishShaders.js';
 
 const FISH_CONFIG = {
   REGULAR: {
@@ -110,50 +111,15 @@ export class FishManager {
   }
 
   createFishMaterial(color) {
+    // Shader personalizado para efectos submarinos
     return new THREE.ShaderMaterial({
       uniforms: {
         time: { value: 0 },
         waterLevel: { value: -0.3 },
         color: { value: new THREE.Color(color) },
-        opacity: { value: 0.95 },
       },
-      vertexShader: `
-        varying vec3 vPosition;
-        varying vec3 vNormal;
-        void main() {
-          vPosition = position;
-          vNormal = normal;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        uniform float time;
-        uniform float waterLevel;
-        uniform vec3 color;
-        uniform float opacity;
-        varying vec3 vPosition;
-        varying vec3 vNormal;
-        
-        void main() {
-          // Enhanced visibility in water
-          float depth = abs(vPosition.y - waterLevel) * 0.08;  // Reduced darkening
-          float caustics = sin(vPosition.x * 3.0 + time) * sin(vPosition.z * 3.0 + time) * 0.8 + 0.2;
-          
-          // Enhanced rim lighting
-          vec3 viewDirection = normalize(cameraPosition - vPosition);
-          float rimLight = pow(1.0 - max(0.0, dot(viewDirection, vNormal)), 2.0);
-          rimLight *= 1.2;  // Increased rim light intensity
-          
-          vec3 brightColor = color * 2.5;  // Increased base brightness
-          vec3 finalColor = brightColor * (1.0 - depth * 0.5) + caustics * 0.5 + rimLight;
-          
-          // Pulsing glow effect
-          float glow = sin(time * 2.0) * 0.2 + 1.0;
-          finalColor *= glow;
-          
-          gl_FragColor = vec4(finalColor, opacity);
-        }
-      `,
+      vertexShader: fishShaders.vertexShader,
+      fragmentShader: fishShaders.fragmentShader,
       transparent: true,
       side: THREE.DoubleSide,
     });
