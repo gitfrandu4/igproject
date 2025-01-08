@@ -6,7 +6,8 @@
 
 VR Fishing nace como un proyecto integrador que combina los tres bloques fundamentales del curso de Informática Gráfica:
 
-### Fundamentos 
+### Fundamentos
+
 - Implementación de conceptos básicos de rasterización y transformaciones 3D
 - Uso de primitivas geométricas para construir el entorno
 - Aplicación de proyecciones y sistemas de coordenadas
@@ -14,6 +15,7 @@ VR Fishing nace como un proyecto integrador que combina los tres bloques fundame
 - Sistema de iluminación básica
 
 ### Realismo
+
 - Animación de peces mediante sistemas de partículas y morphing
 - Implementación de shaders personalizados para el agua y efectos visuales
 - Sistema avanzado de materiales PBR (Physically Based Rendering)
@@ -21,7 +23,8 @@ VR Fishing nace como un proyecto integrador que combina los tres bloques fundame
 - Mapeo de texturas y efectos ambientales
 - Sistema de física para la simulación de la caña y el agua
 
-### Realidad Mixta 
+### Realidad Mixta
+
 - Integración completa con WebXR para experiencia VR
 - Controles adaptados tanto para PC como para dispositivos VR
 - Sistema de interacción natural con los controladores VR
@@ -69,6 +72,8 @@ La motivación principal ha sido crear una experiencia que demuestre la aplicaci
     - [Ammo.js](#ammojs)
     - [three.js](#threejs)
     - [FBXLoader](#fbxloader)
+    - [Estructura Geométrica de los Modelos FBX](#estructura-geométrica-de-los-modelos-fbx)
+      - [Características Técnicas](#características-técnicas)
   - [Configuración y Formato de Código](#configuración-y-formato-de-código)
   - [Pasos para Ejecutar el Proyecto](#pasos-para-ejecutar-el-proyecto)
   - [Referencias y Bibliografía](#referencias-y-bibliografía)
@@ -949,6 +954,33 @@ import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 
 - Cada modelo se clona y se posiciona en el lago, agregando rotación, escalado y diferentes parámetros de movimiento.
 - Gracias a `FBXLoader`, es posible tener peces con animaciones complejas (si el `.fbx` incluye rigs y animaciones), o simplemente mallas estáticas para un movimiento procedural.
+
+### Estructura Geométrica de los Modelos FBX
+
+Los modelos FBX utilizados en el proyecto representan una estructura de malla poligonal (polygon mesh) optimizada para renderizado en tiempo real. 
+
+#### Características Técnicas
+
+1. **Topología Poligonal**:
+
+   - Malla triangulada: Todos los polígonos son triángulos (primitiva básica en WebGL)
+   - Aproximadamente 2,500 triángulos por modelo de pez
+   - Optimización mediante índices compartidos para vértices comunes
+
+2. **Atributos por Vértice**:
+
+   - Posición (vec3): Coordenadas XYZ en el espacio 3D
+   - Normal (vec3): Vector normal para cálculos de iluminación
+   - UV (vec2): Coordenadas de textura para mapeo de materiales
+   - Tangente (vec4): Vectores tangentes para normal mapping
+
+
+Esta estructura geométrica optimizada permite:
+
+- Renderizado eficiente en WebGL
+- Gestión de memoria optimizada
+- Animaciones fluidas en tiempo real
+- Compatibilidad con técnicas de shading avanzadas
 
 ---
 
