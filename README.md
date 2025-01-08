@@ -2,11 +2,42 @@
 
 **URL del Proyecto**: [https://gitfrandu4.github.io/vr-fishing/](https://gitfrandu4.github.io/vr-fishing/)
 
+## Introducción y Motivación del Proyecto
+
+VR Fishing nace como un proyecto integrador que combina los tres bloques fundamentales del curso de Informática Gráfica:
+
+### Fundamentos 
+- Implementación de conceptos básicos de rasterización y transformaciones 3D
+- Uso de primitivas geométricas para construir el entorno
+- Aplicación de proyecciones y sistemas de coordenadas
+- Gestión de visibilidad y recorte de objetos
+- Sistema de iluminación básica
+
+### Realismo
+- Animación de peces mediante sistemas de partículas y morphing
+- Implementación de shaders personalizados para el agua y efectos visuales
+- Sistema avanzado de materiales PBR (Physically Based Rendering)
+- Grafo de escena complejo para la gestión de objetos
+- Mapeo de texturas y efectos ambientales
+- Sistema de física para la simulación de la caña y el agua
+
+### Realidad Mixta 
+- Integración completa con WebXR para experiencia VR
+- Controles adaptados tanto para PC como para dispositivos VR
+- Sistema de interacción natural con los controladores VR
+- Optimizaciones específicas para rendimiento en VR
+
+La motivación principal ha sido crear una experiencia que demuestre la aplicación práctica de estos tres bloques en un único proyecto cohesivo, permitiendo ver cómo los conceptos fundamentales sirven de base para implementar características realistas que finalmente se integran en un entorno de realidad virtual inmersivo.
+
 ---
 
 ## Índice
 
 - [VR Fishing 🎣](#vr-fishing-)
+  - [Introducción y Motivación del Proyecto](#introducción-y-motivación-del-proyecto)
+    - [Fundamentos](#fundamentos)
+    - [Realismo](#realismo)
+    - [Realidad Mixta](#realidad-mixta)
   - [Índice](#índice)
   - [Descripción General](#descripción-general)
   - [Aspectos Técnicos](#aspectos-técnicos)
