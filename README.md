@@ -1068,3 +1068,19 @@ cd vr-fishing
 ---
 
 🎯 **¡Buena pesca!**
+
+---
+
+# Notas
+
+## Rasterización
+
+La rasterización se refiere al proceso fundamental en gráficos por computadora mediante el cual las primitivas geométricas tridimensionales, como triángulos, se convierten en píxeles en una pantalla bidimensional.
+
+En VR Fishing, esto implica:
+
+* Transformar objetos 3D (como la caña de pescar, los peces, o el entorno del lago) desde su representación en el espacio tridimensional a coordenadas 2D en la pantalla, aplicando transformaciones de cámara y perspectiva.
+
+* Llenar los píxeles dentro de cada triángulo con información de color, iluminación y textura, calculada según las propiedades definidas por los shaders y los materiales (como el agua o los peces).
+
+* Este proceso es crucial para renderizar la escena de manera eficiente y en tiempo real, especialmente en una experiencia inmersiva como VR, donde el rendimiento es esencial para garantizar una experiencia fluida y cómoda para el usuario.
