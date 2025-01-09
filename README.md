@@ -10,18 +10,16 @@ VR Fishing nace como un proyecto integrador que combina los tres bloques fundame
 
 - Implementación de conceptos básicos de rasterización y transformaciones 3D
 - Uso de primitivas geométricas para construir el entorno
-- Aplicación de proyecciones y sistemas de coordenadas
 - Gestión de visibilidad y recorte de objetos
 - Sistema de iluminación básica
 
 ### Realismo
 
 - Animación de peces mediante sistemas de partículas y morphing
-- Implementación de shaders personalizados para el agua y efectos visuales
+- Implementación de shaders personalizados para el agua, el cesped y efectos visuales
 - Sistema avanzado de materiales PBR (Physically Based Rendering)
-- Grafo de escena complejo para la gestión de objetos
 - Mapeo de texturas y efectos ambientales
-- Sistema de física para la simulación de la caña y el agua
+- Sistema de física para la simulación de la caña y los peces
 
 ### Realidad Mixta
 
