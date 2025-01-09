@@ -1084,3 +1084,16 @@ En VR Fishing, esto implica:
 * Llenar los píxeles dentro de cada triángulo con información de color, iluminación y textura, calculada según las propiedades definidas por los shaders y los materiales (como el agua o los peces).
 
 * Este proceso es crucial para renderizar la escena de manera eficiente y en tiempo real, especialmente en una experiencia inmersiva como VR, donde el rendimiento es esencial para garantizar una experiencia fluida y cómoda para el usuario.
+
+## Materiales PBR
+
+Los materiales PBR (_Physically Based Rendering_, o Renderizado Basado en Física) son una técnica avanzada para simular cómo interactúa la luz con los materiales de una escena 3D de manera más realista, basándose en las leyes físicas de la óptica. Los materiales PBR logran un equilibrio entre realismo y rendimiento, lo que los hace ideales para aplicaciones en tiempo real como videojuegos, simuladores y proyectos de VR como VR Fishing.
+
+Principales Componentes de los Materiales PBR
+
+* **Textura Albedo**: Representa el color base del material, sin efectos de iluminación ni sombras. Es el color "plano" de la superficie.
+* **Mapa de Normal**: Define detalles de la superficie como pequeñas irregularidades o texturas (baches, rayas, etc.) simulando geometría adicional sin aumentar el número de polígonos.
+* **Mapa de Rugosidad (_Roughness_)**: Controla cuán suave o rugosa es la superficie del material. Una superficie rugosa (como madera) dispersa la luz de manera difusa, mientras que una superficie lisa (como metal pulido) genera reflejos nítidos.
+* **Mapa Metálico (_Metallic_)**: Determina si un material tiene propiedades metálicas (como oro, acero) o no metálicas (como madera, plástico).
+* **Mapa de Oclusión Ambiental (AO - _Ambient Occlusion_)**: Añade sombras suaves en áreas donde la luz ambiental tiene menos acceso, como esquinas o grietas.
+
